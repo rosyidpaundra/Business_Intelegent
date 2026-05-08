@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><link rel="icon" href="data:,">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WebGIS BI — Kota Yogyakarta</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Heat -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<style>
+#map-explore, #map-isochrone, #map-route, #map-site, #map-report {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  background: #0a0d14;
+}  
+/* ── Design Tokens ─────────────────────── */
+:root {
+  --bg:        #0d0f12;
+  --bg2:       #141820;
+  --bg3:       #1c2130;
+  --border:    #2a3147;
+  --accent:    #00e5a0;
+  --accent2:   #0080ff;
+  --warn:      #ffb300;
+  --danger:    #ff4d4d;
+  --text:      #c8d4e8;
+  --text2:     #6e7f99;
+  --text3:     #3d4d66;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'IBM Plex Sans', sans-serif;
+  --panel:     280px;
+  --topbar:    52px;
+  --radius:    4px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* ── Top Bar ───────────────────────────── */
+#topbar {
+  height: var(--topbar);
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 20px;
+  flex-shrink: 0;
+  z-index: 1000;
+}
+
+#topbar .logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#topbar .logo span { color: var(--text2); font-weight: 400; }
+
+#topbar .nav-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+#topbar .nav-tabs button {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#topbar .nav-tabs button.active {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+#topbar .nav-tabs button:hover:not(.active) {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.spacer { flex: 1; }
+
+#status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+#status-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* ── Main Layout ───────────────────────── */
+#app {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  height: calc(100vh - 52px);
+}
+/* ── Left Panel ────────────────────────── */
+#sidebar {
+  width: var(--panel);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+}
+
+.panel-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+/* KPI Cards */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.kpi-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.kpi-card .kpi-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.kpi-card .kpi-lbl {
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* Form Controls */
+.ctrl-row { margin-bottom: 10px; }
+.ctrl-row label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ctrl-row select,
+.ctrl-row input[type=text],
+.ctrl-row input[type=number] {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.ctrl-row select:focus,
+.ctrl-row input:focus { border-color: var(--accent); }
+
+.ctrl-row input[type=range] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.range-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-row input { flex: 1; }
+.range-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 9px 14px;
+  transition: all .15s;
+  width: 100%;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-primary:active { filter: brightness(0.9); }
+
+.btn-secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-danger {
+  background: var(--bg3);
+  color: var(--danger);
+  border: 1px solid var(--border);
+}
+.btn-danger:hover { border-color: var(--danger); }
+
+.btn-group { display: flex; gap: 6px; }
+.btn-group .btn { flex: 1; }
+
+/* Layer toggles */
+.layer-list { display: flex; flex-direction: column; gap: 6px; }
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s;
+  user-select: none;
+}
+.layer-item:hover { border-color: var(--text3); }
+.layer-item.active { border-color: var(--accent); }
+
+.layer-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.layer-name { font-family: var(--mono); font-size: 11px; flex: 1; }
+.layer-toggle {
+  width: 28px; height: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  transition: background .2s;
+}
+.layer-toggle::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  background: var(--text3);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: all .2s;
+}
+.layer-item.active .layer-toggle { background: var(--accent); border-color: var(--accent); }
+.layer-item.active .layer-toggle::after { background: var(--bg); left: 14px; }
+
+/* Result panel */
+#result-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.result-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 8px;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+.result-card .rc-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row .rr-key { color: var(--text2); font-family: var(--mono); font-size: 11px; }
+.result-row .rr-val { color: var(--text); font-weight: 500; }
+.rr-val.good { color: var(--accent); }
+.rr-val.mid  { color: var(--warn);   }
+.rr-val.bad  { color: var(--danger); }
+
+.score-bar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.score-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .6s ease;
+}
+
+/* ── Map ───────────────────────────────── */
+#map-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+  height: calc(100vh - 52px);
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  background: #0a0d14;
+}
+/* Map overlays */
+#map-coords {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(13,15,18,.85);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  pointer-events: none;
+  z-index: 500;
+  backdrop-filter: blur(4px);
+}
+
+#map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  background: rgba(13,15,18,.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 24px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  display: none;
+  z-index: 999;
+  backdrop-filter: blur(8px);
+}
+
+#map-loading::before {
+  content: '';
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* Leaflet overrides */
+.leaflet-container { background: #0a0d14; font-family: var(--sans); }
+.leaflet-popup-content-wrapper {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.leaflet-popup-tip { background: var(--bg2); }
+.leaflet-bar { border: 1px solid var(--border) !important; }
+.leaflet-bar a {
+  background: var(--bg2) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.leaflet-bar a:hover { background: var(--bg3) !important; color: var(--accent) !important; }
+
+/* ── Right Panel ───────────────────────── */
+#right-panel {
+  width: 280px;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chart-wrap {
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chart-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+canvas { max-width: 100%; }
+
+/* Tab views */
+.tab-view { display: none; }
+.tab-view.active { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Toast ─────────────────────────────── */
+#toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  animation: slideIn .2s ease;
+  max-width: 320px;
+}
+.toast.error { border-left-color: var(--danger); }
+.toast.warn  { border-left-color: var(--warn);   }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="topbar">
+  <div class="logo">GIS<span>·</span>BI <span>// Kota Yogyakarta</span></div>
+  <div class="nav-tabs">
+    <button class="active" onclick="switchTab('explore')">Explore</button>
+    <button onclick="switchTab('isochrone')">Isochrone</button>
+    <button onclick="switchTab('route')">Route</button>
+    <button onclick="switchTab('site')">Site Analysis</button>
+    <button onclick="switchTab('report')">Report</button>
+  </div>
+  <div class="spacer"></div>
+  <div id="status-dot"></div>
+  <div id="status-text">API Connected</div>
+</div>
+
+<!-- Main App -->
+<div id="app">
+
+  <!-- ── TAB: EXPLORE ─────────────────── -->
+  <div id="tab-explore" class="tab-view active">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="panel-section">
+        <div class="panel-label">KPI Kota</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-val" id="kpi-poi">—</div>
+            <div class="kpi-lbl">Total POI</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-val" id="kpi-km">—</div>
+            <div class="kpi-lbl">km Jalan</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">Filter POI</div>
+        <div class="ctrl-row">
+          <label>Kategori</label>
+          <select id="filter-kategori" onchange="loadPOI()">
+            <option value="">Semua Kategori</option>
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="pendidikan">Pendidikan</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="pariwisata">Pariwisata</option>
+          </select>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="loadPOI()">▶ Load</button>
+          <button class="btn btn-secondary" onclick="loadHeatmap()">⬡ Heat</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-label">Layer Aktif</div>
+        <div class="layer-list">
+          <div class="layer-item active" id="layer-poi" onclick="toggleLayer('poi')">
+            <div class="layer-dot" style="background:var(--accent)"></div>
+            <span class="layer-name">POI Bisnis</span>
+            <div class="layer-toggle"></div>
+          </div>
+          <div class="layer-item" id="layer-heat" onclick="toggleLayer('heat')">
+            <div class="layer-dot" style="background:var(--warn)"></div>
+            <span class="layer-name">Heatmap</span>
+            <div class="layer-toggle"></div>
+          </div>
+          <div class="layer-item" id="layer-iso" onclick="toggleLayer('iso')">
+            <div class="layer-dot" style="background:var(--accent2)"></div>
+            <span class="layer-name">Isochrone</span>
+            <div class="layer-toggle"></div>
+          </div>
+          <div class="layer-item" id="layer-gap" onclick="toggleLayer('gap')">
+            <div class="layer-dot" style="background:var(--danger)"></div>
+            <span class="layer-name">Gap Analysis</span>
+            <div class="layer-toggle"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="result-panel"></div>
+    </div>
+
+    <!-- Map -->
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="map-coords">110.3653, -7.7956</div>
+      <div id="map-loading">Memuat data...</div>
+    </div>
+
+    <!-- Right: Chart -->
+    <div id="right-panel">
+      <div class="chart-wrap">
+        <div class="chart-title">Distribusi Kategori</div>
+        <canvas id="chart-kategori" height="220"></canvas>
+        <div class="chart-title" style="margin-top:24px">Kompetitor Terdekat</div>
+        <canvas id="chart-competitors" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: ISOCHRONE ───────────────── -->
+  <div id="tab-isochrone" class="tab-view">
+    <div id="sidebar">
+      <div class="panel-section">
+        <div class="panel-label">Parameter Isochrone</div>
+        <div class="ctrl-row">
+          <label>Mode Transport</label>
+          <select id="iso-profile">
+            <option value="driving-car">🚗 Kendaraan</option>
+            <option value="cycling-regular">🚲 Sepeda</option>
+            <option value="foot-walking">🚶 Jalan Kaki</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label>Jangkauan (menit)</label>
+          <div class="range-row">
+            <input type="range" id="iso-range" min="2" max="60" value="10"
+                   oninput="document.getElementById('iso-range-val').textContent=this.value+' min'"/>
+            <span class="range-val" id="iso-range-val">10 min</span>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+          Klik titik di peta untuk menghitung area jangkauan dari lokasi tersebut.
+        </p>
+        <button class="btn btn-danger" onclick="clearIsochrone()">✕ Bersihkan</button>
+      </div>
+      <div id="result-panel"></div>
+    </div>
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="map-coords">110.3653, -7.7956</div>
+      <div id="map-loading">Memuat data...</div>
+    </div>
+    <div id="right-panel">
+      <div class="chart-wrap">
+        <div class="chart-title">Hasil Isochrone</div>
+        <div id="iso-stats" style="font-family:var(--mono);font-size:12px;color:var(--text2)">
+          Klik peta untuk memulai analisis.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: ROUTE ───────────────────── -->
+  <div id="tab-route" class="tab-view">
+    <div id="sidebar">
+      <div class="panel-section">
+        <div class="panel-label">Kalkulasi Rute</div>
+        <div class="ctrl-row">
+          <label>Profil</label>
+          <select id="route-profile">
+            <option value="driving-car">Kendaraan</option>
+            <option value="cycling-regular">Sepeda</option>
+            <option value="foot-walking">Jalan Kaki</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label>Titik Asal (lat, lng)</label>
+          <input type="text" id="route-start" placeholder="-7.7956, 110.3653"/>
+        </div>
+        <div class="ctrl-row">
+          <label>Titik Tujuan (lat, lng)</label>
+          <input type="text" id="route-end" placeholder="-7.8012, 110.3744"/>
+        </div>
+        <button class="btn btn-primary" onclick="calcRoute()">▶ Hitung Rute</button>
+        <div style="margin-top:8px">
+          <button class="btn btn-secondary" onclick="enableRoutePicker()">📍 Pilih dari Peta</button>
+        </div>
+      </div>
+      <div id="result-panel"></div>
+    </div>
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="map-coords">110.3653, -7.7956</div>
+      <div id="map-loading">Memuat data...</div>
+    </div>
+    <div id="right-panel">
+      <div class="chart-wrap">
+        <div class="chart-title">Statistik Rute</div>
+        <div id="route-stats" style="font-family:var(--mono);font-size:12px;color:var(--text2)">
+          Isi koordinat dan tekan Hitung Rute.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SITE ANALYSIS ───────────── -->
+  <div id="tab-site" class="tab-view">
+    <div id="sidebar">
+      <div class="panel-section">
+        <div class="panel-label">Analisis Lokasi Bisnis</div>
+        <div class="ctrl-row">
+          <label>Kategori Usaha</label>
+          <select id="site-kategori">
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+          </select>
+        </div>
+        <div class="ctrl-row">
+          <label>Jangkauan Analisis (menit)</label>
+          <div class="range-row">
+            <input type="range" id="site-range" min="5" max="30" value="10"
+                   oninput="document.getElementById('site-range-val').textContent=this.value+' min'"/>
+            <span class="range-val" id="site-range-val">10 min</span>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+          Klik lokasi kandidat di peta untuk memulai analisis kelayakan.
+        </p>
+        <button class="btn btn-secondary" onclick="loadGapAnalysis()">⬡ Gap Analysis</button>
+      </div>
+      <div id="result-panel"></div>
+    </div>
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="map-coords">110.3653, -7.7956</div>
+      <div id="map-loading">Memuat data...</div>
+    </div>
+    <div id="right-panel">
+      <div class="chart-wrap">
+        <div class="chart-title">Skor Analisis</div>
+        <canvas id="chart-site" height="200"></canvas>
+        <div id="site-rec" style="margin-top:12px;font-family:var(--mono);font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: REPORT ──────────────────── -->
+  <div id="tab-report" class="tab-view">
+    <div id="sidebar">
+      <div class="panel-section">
+        <div class="panel-label">Filter Laporan</div>
+        <div class="ctrl-row">
+          <label>Dari Tanggal</label>
+          <input type="text" id="rep-from" placeholder="2024-01-01"/>
+        </div>
+        <div class="ctrl-row">
+          <label>Sampai Tanggal</label>
+          <input type="text" id="rep-to" placeholder="2024-12-31"/>
+        </div>
+        <div class="ctrl-row">
+          <label>Kelompokkan</label>
+          <select id="rep-group">
+            <option value="kategori">Per Kategori</option>
+            <option value="kecamatan">Per Kecamatan</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="loadReport()">▶ Buat Laporan</button>
+      </div>
+      <div class="panel-section">
+        <div class="panel-label">Export Data</div>
+        <div class="ctrl-row">
+          <label>Kategori</label>
+          <select id="exp-kategori">
+            <option value="">Semua</option>
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+          </select>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="exportData('geojson')">↓ GeoJSON</button>
+          <button class="btn btn-secondary" onclick="exportData('csv')">↓ CSV</button>
+        </div>
+      </div>
+      <div id="result-panel"></div>
+    </div>
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="map-coords">110.3653, -7.7956</div>
+      <div id="map-loading">Memuat data...</div>
+    </div>
+    <div id="right-panel">
+      <div class="chart-wrap">
+        <div class="chart-title">Ringkasan Laporan</div>
+        <canvas id="chart-report" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script>
+// ─────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────
+const API = 'http://localhost:8001/api/v1';
+const JOGJA = [-7.7956, 110.3653];
+
+// ─────────────────────────────────────────
+// Map Setup (satu instance shared)
+// ─────────────────────────────────────────
+let maps = {};
+let layers = { poi: null, heat: null, iso: null, gap: null, route: null };
+let activeTab = 'explore';
+let routePickMode = null;  // 'start' | 'end'
+let charts = {};
+
+function initMap(containerId) {
+  if (maps[containerId]) return maps[containerId];
+
+  const m = L.map(containerId, {
+    center: JOGJA,
+    zoom: 13,
+    zoomControl: true,
+    attributionControl: false
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(m);
+
+  m.on('mousemove', e => {
+    document.querySelectorAll('#map-coords').forEach(el => {
+      el.textContent = `${e.latlng.lng.toFixed(4)}, ${e.latlng.lat.toFixed(4)}`;
+    });
+  });
+
+  m.on('click', e => handleMapClick(e, containerId));
+  maps[containerId] = m;
+  return m;
+}
+
+function getActiveMap() {
+  return maps[`map-${activeTab}`] || maps['map'];
+}
+
+// ─────────────────────────────────────────
+// Tab Switching
+// ─────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tabs button').forEach((b, i) => {
+    const tabs = ['explore','isochrone','route','site','report'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  document.getElementById(`tab-${tab}`).classList.add('active');
+
+  // Init map for this tab
+  setTimeout(() => {
+  const mapEl = document.querySelector(`#tab-${tab} [id^="map"]`) 
+             || document.querySelector(`#tab-${tab} #map-${tab}`)
+             || document.querySelector(`#tab-${tab} #map`);
+  if (mapEl && mapEl.id !== `map-${tab}`) {
+    mapEl.id = `map-${tab}`;
+  }
+  const m = initMap(`map-${tab}`);
+  if (m) m.invalidateSize();
+  if (tab === 'explore') loadDashboard();
+}, 100);
+}
+
+// Init default map
+window.addEventListener('load', () => {
+  const mapEl = document.getElementById('map');
+  if (mapEl) {
+    mapEl.id = 'map-explore';
+  }
+  initMap('map-explore');
+  loadDashboard();
+  loadPOI();
+});
+
+// ─────────────────────────────────────────
+// Map Click Handler
+// ─────────────────────────────────────────
+function handleMapClick(e, mapId) {
+  const { lat, lng } = e.latlng;
+
+  if (activeTab === 'isochrone') {
+    runIsochrone(lat, lng);
+  } else if (activeTab === 'site') {
+    runSiteAnalysis(lat, lng);
+  } else if (activeTab === 'route' && routePickMode) {
+    const val = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    if (routePickMode === 'start') {
+      document.getElementById('route-start').value = val;
+    } else {
+      document.getElementById('route-end').value = val;
+    }
+    routePickMode = null;
+    showToast('Titik dipilih. Tekan Hitung Rute.');
+  }
+}
+
+// ─────────────────────────────────────────
+// API Helpers
+// ─────────────────────────────────────────
+function showLoading(show) {
+  document.querySelectorAll('#map-loading').forEach(el => {
+    el.style.display = show ? 'block' : 'none';
+  });
+}
+
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type === 'error' ? 'error' : type === 'warn' ? 'warn' : ''}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+async function apiFetch(url, opts = {}) {
+  try {
+    const res = await fetch(API + url, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    showToast(`API Error: ${e.message}`, 'error');
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────
+// Layer Toggle
+// ─────────────────────────────────────────
+function toggleLayer(name) {
+  const el = document.getElementById(`layer-${name}`);
+  el.classList.toggle('active');
+  const m = getActiveMap();
+  if (!m) return;
+  if (layers[name]) {
+    if (m.hasLayer(layers[name])) {
+      m.removeLayer(layers[name]);
+    } else {
+      m.addLayer(layers[name]);
+    }
+  }
+}
+
+// ─────────────────────────────────────────
+// Dashboard / KPI
+// ─────────────────────────────────────────
+async function loadDashboard() {
+  const data = await apiFetch('/report/dashboard');
+  if (!data) return;
+  document.getElementById('kpi-poi').textContent = data.kpi.total_poi?.toLocaleString() || '0';
+  document.getElementById('kpi-km').textContent  = Math.round(data.kpi.total_km_jalan) || '0';
+
+  // Chart kategori
+  const cats = data.distribusi_kategori || [];
+  renderDoughnut('chart-kategori', cats.map(c => c.kategori), cats.map(c => c.n));
+}
+
+function renderDoughnut(id, labels, values) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#00e5a0','#0080ff','#ffb300','#ff4d4d','#a78bfa','#34d399'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#6e7f99',
+            font: { family: "'IBM Plex Mono'", size: 10 },
+            padding: 10, boxWidth: 10
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderBar(id, labels, values, color = '#00e5a0') {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: color,
+        borderRadius: 2,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: '#2a3147' },
+          ticks: { color: '#6e7f99', font: { family: "'IBM Plex Mono'", size: 10 } }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#6e7f99', font: { family: "'IBM Plex Mono'", size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────
+// Load POI
+// ─────────────────────────────────────────
+async function loadPOI() {
+  const kategori = document.getElementById('filter-kategori')?.value || '';
+  showLoading(true);
+  const url = kategori ? `/business/poi?kategori=${kategori}` : '/business/poi';
+  const data = await apiFetch(url);
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-explore'];
+  if (!m) return;
+
+  if (layers.poi) m.removeLayer(layers.poi);
+
+  const color = { kuliner:'#00e5a0', retail:'#0080ff', jasa:'#ffb300',
+                  pendidikan:'#a78bfa', kesehatan:'#ff4d4d', pariwisata:'#34d399' };
+
+  const markers = data.map(p => {
+    const c = color[p.kategori] || '#c8d4e8';
+    const icon = L.divIcon({
+      html: `<div style="width:10px;height:10px;border-radius:50%;background:${c};
+              border:2px solid ${c}44;box-shadow:0 0 6px ${c}88"></div>`,
+      className: '', iconSize: [10, 10], iconAnchor: [5, 5]
+    });
+    const mk = L.marker([p.lat, p.lng], { icon });
+    mk.bindPopup(`<b>${p.nama}</b><br>${p.kategori}<br><small>${p.alamat || ''}</small>`);
+    mk.on('click', () => showPOIDetail(p));
+    return mk;
+  });
+
+  layers.poi = L.layerGroup(markers).addTo(m);
+  showToast(`${data.length} POI dimuat`);
+
+  // Kompetitor chart
+  const cats = {};
+  data.forEach(p => cats[p.kategori] = (cats[p.kategori]||0)+1);
+  renderBar('chart-competitors',
+    Object.keys(cats), Object.values(cats), '#0080ff');
+}
+
+function showPOIDetail(p) {
+  const rp = document.getElementById('result-panel');
+  if (!rp) return;
+  rp.innerHTML = `
+    <div class="result-card">
+      <div class="rc-title">${p.nama}</div>
+      <div class="result-row"><span class="rr-key">Kategori</span><span class="rr-val">${p.kategori}</span></div>
+      <div class="result-row"><span class="rr-key">Alamat</span><span class="rr-val" style="font-size:11px">${p.alamat||'—'}</span></div>
+      <div class="result-row"><span class="rr-key">Koordinat</span><span class="rr-val" style="font-size:10px">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span></div>
+      <div style="margin-top:10px;display:flex;gap:6px">
+        <button class="btn btn-primary" style="font-size:10px;padding:7px"
+          onclick="quickIsochrone(${p.lat},${p.lng})">Isochrone</button>
+        <button class="btn btn-secondary" style="font-size:10px;padding:7px"
+          onclick="quickCompetitors(${p.lat},${p.lng},'${p.kategori}')">Kompetitor</button>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// Heatmap
+// ─────────────────────────────────────────
+async function loadHeatmap() {
+  const kategori = document.getElementById('filter-kategori')?.value || '';
+  showLoading(true);
+  const url = kategori ? `/business/heatmap?kategori=${kategori}` : '/business/heatmap';
+  const data = await apiFetch(url);
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-explore'];
+  if (!m) return;
+  if (layers.heat) m.removeLayer(layers.heat);
+
+  const pts = data.features.map(f => [
+    f.geometry.coordinates[1],
+    f.geometry.coordinates[0],
+    f.properties.weight
+  ]);
+
+  layers.heat = L.heatLayer(pts, {
+    radius: 20, blur: 15,
+    gradient: { 0.1:'#0080ff', 0.5:'#ffb300', 1:'#ff4d4d' }
+  }).addTo(m);
+
+  document.getElementById('layer-heat').classList.add('active');
+  showToast('Heatmap dimuat');
+}
+
+// ─────────────────────────────────────────
+// Isochrone
+// ─────────────────────────────────────────
+async function runIsochrone(lat, lng) {
+  const profile = document.getElementById('iso-profile')?.value || 'driving-car';
+  const range   = document.getElementById('iso-range')?.value || 10;
+  showLoading(true);
+
+  const data = await apiFetch(
+    `/geo/isochrone?lng=${lng}&lat=${lat}&range_menit=${range}&profile=${profile}`
+  );
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-isochrone'];
+  if (!m) return;
+  if (layers.iso) m.removeLayer(layers.iso);
+
+  const geo = L.geoJSON(data, {
+    style: {
+      color: '#0080ff',
+      fillColor: '#0080ff',
+      fillOpacity: 0.15,
+      weight: 2,
+      dashArray: '4 4'
+    }
+  });
+
+  const marker = L.circleMarker([lat, lng], {
+    radius: 6, color: '#00e5a0', fillColor: '#00e5a0', fillOpacity: 1, weight: 2
+  });
+
+  layers.iso = L.layerGroup([geo, marker]).addTo(m);
+  m.fitBounds(geo.getBounds());
+
+  // Stats
+  const feat = data.features[0];
+  const area = feat?.properties?.area ? (feat.properties.area / 1e6).toFixed(3) : '—';
+  document.getElementById('iso-stats').innerHTML = `
+    <div class="result-row"><span class="rr-key">Profil</span><span class="rr-val">${profile}</span></div>
+    <div class="result-row"><span class="rr-key">Jangkauan</span><span class="rr-val good">${range} menit</span></div>
+    <div class="result-row"><span class="rr-key">Luas Area</span><span class="rr-val">${area} km²</span></div>
+    <div class="result-row"><span class="rr-key">Koordinat</span><span class="rr-val" style="font-size:10px">${lat.toFixed(4)}, ${lng.toFixed(4)}</span></div>
+  `;
+  document.getElementById('layer-iso').classList.add('active');
+}
+
+function clearIsochrone() {
+  const m = maps['map-isochrone'];
+  if (m && layers.iso) { m.removeLayer(layers.iso); layers.iso = null; }
+  document.getElementById('iso-stats').textContent = 'Klik peta untuk memulai analisis.';
+}
+
+async function quickIsochrone(lat, lng) {
+  switchTab('isochrone');
+  setTimeout(() => runIsochrone(lat, lng), 300);
+}
+
+// ─────────────────────────────────────────
+// Route
+// ─────────────────────────────────────────
+function enableRoutePicker() {
+  routePickMode = document.getElementById('route-start').value ? 'end' : 'start';
+  showToast(`Klik peta untuk memilih titik ${routePickMode === 'start' ? 'asal' : 'tujuan'}`, 'warn');
+}
+
+async function calcRoute() {
+  const startVal = document.getElementById('route-start').value.trim();
+  const endVal   = document.getElementById('route-end').value.trim();
+  const profile  = document.getElementById('route-profile').value;
+
+  const parseCoord = s => {
+    const p = s.split(',').map(Number);
+    return [p[1], p[0]]; // [lng, lat]
+  };
+
+  if (!startVal || !endVal) { showToast('Isi kedua koordinat', 'warn'); return; }
+
+  showLoading(true);
+  const data = await apiFetch('/geo/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      start: parseCoord(startVal),
+      end:   parseCoord(endVal),
+      profile
+    })
+  });
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-route'];
+  if (!m) return;
+  if (layers.route) m.removeLayer(layers.route);
+
+  const geo = L.geoJSON(data, {
+    style: { color: '#00e5a0', weight: 3, opacity: 0.9 }
+  });
+
+  const summary = data.features?.[0]?.properties?.summary || {};
+  const dur = summary.duration ? Math.round(summary.duration / 60) : '—';
+  const dist = summary.distance ? (summary.distance / 1000).toFixed(2) : '—';
+
+  layers.route = geo.addTo(m);
+  m.fitBounds(geo.getBounds());
+
+  document.getElementById('route-stats').innerHTML = `
+    <div class="result-row"><span class="rr-key">Durasi</span><span class="rr-val good">${dur} menit</span></div>
+    <div class="result-row"><span class="rr-key">Jarak</span><span class="rr-val">${dist} km</span></div>
+    <div class="result-row"><span class="rr-key">Profil</span><span class="rr-val">${profile}</span></div>
+  `;
+
+  const rp = document.querySelector('#tab-route #result-panel');
+  if (rp) rp.innerHTML = `
+    <div class="result-card">
+      <div class="rc-title">Hasil Rute</div>
+      <div class="result-row"><span class="rr-key">Durasi</span><span class="rr-val good">${dur} mnt</span></div>
+      <div class="result-row"><span class="rr-key">Jarak</span><span class="rr-val">${dist} km</span></div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────
+// Site Analysis
+// ─────────────────────────────────────────
+async function runSiteAnalysis(lat, lng) {
+  const kategori = document.getElementById('site-kategori').value;
+  const range    = document.getElementById('site-range').value;
+  showLoading(true);
+
+  const data = await apiFetch('/analytics/site-analysis', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng, kategori, radius_menit: +range })
+  });
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-site'];
+  if (!m) return;
+
+  // Marker
+  const icon = L.divIcon({
+    html: `<div style="width:14px;height:14px;border-radius:50%;
+           background:var(--accent);border:3px solid #fff2;
+           box-shadow:0 0 12px #00e5a088"></div>`,
+    className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+  L.marker([lat, lng], { icon }).addTo(m)
+   .bindPopup(`<b>Kandidat Lokasi</b><br>Skor: ${data.skor_total}`).openPopup();
+
+  // Chart radar-style bar
+  const d = data.demand?.komponen || {};
+  const siteCtx = document.getElementById('chart-site')?.getContext('2d');
+  if (siteCtx) {
+    if (charts['chart-site']) charts['chart-site'].destroy();
+    charts['chart-site'] = new Chart(siteCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Aksesibilitas', 'Catchment', 'Saturasi Pasar'],
+        datasets: [{
+          data: [d.aksesibilitas||0, d.luas_catchment||0, d.saturasi_pasar||0],
+          backgroundColor: ['#00e5a0', '#0080ff', '#ffb300'],
+          borderRadius: 3, borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { max: 40, grid: { color: '#2a3147' },
+               ticks: { color: '#6e7f99', font: { family: "'IBM Plex Mono'", size: 10 } } },
+          x: { grid: { display: false },
+               ticks: { color: '#6e7f99', font: { family: "'IBM Plex Mono'", size: 10 } } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  const rec = data.rekomendasi || '—';
+  const recColor = rec === 'Sangat Potensial' ? 'good' : rec === 'Potensial' ? 'mid' : 'bad';
+  document.getElementById('site-rec').innerHTML = `
+    <div class="result-row"><span class="rr-key">Skor Total</span>
+      <span class="rr-val ${recColor}">${data.skor_total}/100</span></div>
+    <div class="result-row"><span class="rr-key">Status</span>
+      <span class="rr-val ${recColor}">${rec}</span></div>
+    <div class="score-bar"><div class="score-fill" style="width:${data.skor_total}%;
+      background:${recColor==='good'?'var(--accent)':recColor==='mid'?'var(--warn)':'var(--danger)'}"></div></div>
+  `;
+
+  const rp = document.querySelector('#tab-site #result-panel');
+  if (rp) rp.innerHTML = `
+    <div class="result-card">
+      <div class="rc-title">Analisis Lokasi</div>
+      <div class="result-row"><span class="rr-key">Kategori</span><span class="rr-val">${kategori}</span></div>
+      <div class="result-row"><span class="rr-key">Skor</span><span class="rr-val ${recColor}">${data.skor_total}/100</span></div>
+      <div class="result-row"><span class="rr-key">Kompetitor</span>
+        <span class="rr-val">${data.demand?.komponen?.saturasi_pasar !== undefined ?
+          Math.max(0, (30 - (data.demand.komponen.saturasi_pasar||0)) / 5) : '—'}</span></div>
+      <div class="result-row"><span class="rr-key">Rekomendasi</span>
+        <span class="rr-val ${recColor}">${rec}</span></div>
+      <div class="score-bar"><div class="score-fill" style="width:${data.skor_total}%;
+        background:${recColor==='good'?'var(--accent)':recColor==='mid'?'var(--warn)':'var(--danger)'}"></div></div>
+    </div>`;
+}
+
+async function loadGapAnalysis() {
+  const kategori = document.getElementById('site-kategori').value;
+  showLoading(true);
+  const data = await apiFetch(`/analytics/gap-analysis?kategori=${kategori}`);
+  showLoading(false);
+  if (!data) return;
+
+  const m = maps['map-site'];
+  if (!m) return;
+  if (layers.gap) m.removeLayer(layers.gap);
+
+  const geo = L.geoJSON(data, {
+    pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+      radius: 6, color: '#ff4d4d', fillColor: '#ff4d4d44', fillOpacity: 1, weight: 1.5
+    }),
+    onEachFeature: (f, layer) => layer.bindTooltip('Gap Area')
+  });
+
+  layers.gap = geo.addTo(m);
+  document.getElementById('layer-gap').classList.add('active');
+  showToast(`${data.total_gap_points} area gap ditemukan`);
+}
+
+// ─────────────────────────────────────────
+// Report
+// ─────────────────────────────────────────
+async function loadReport() {
+  const from  = document.getElementById('rep-from').value;
+  const to    = document.getElementById('rep-to').value;
+  const group = document.getElementById('rep-group').value;
+
+  let url = `/report/summary?group_by=${group}`;
+  if (from) url += `&date_from=${from}`;
+  if (to)   url += `&date_to=${to}`;
+
+  showLoading(true);
+  const data = await apiFetch(url);
+  showLoading(false);
+  if (!data) return;
+
+  renderBar('chart-report',
+    data.data.map(d => d.label),
+    data.data.map(d => d.jumlah)
+  );
+
+  const rp = document.querySelector('#tab-report #result-panel');
+  if (rp) {
+    rp.innerHTML = data.data.map(d => `
+      <div class="result-card">
+        <div class="result-row">
+          <span class="rr-key">${d.label}</span>
+          <span class="rr-val good">${d.jumlah}</span>
+        </div>
+      </div>`).join('');
+  }
+  showToast(`Laporan: ${data.data.length} kelompok`);
+}
+
+async function quickCompetitors(lat, lng, kategori) {
+  const data = await apiFetch(
+    `/business/competitors?lat=${lat}&lng=${lng}&kategori=${kategori}&radius_km=1`
+  );
+  if (!data) return;
+  const rp = document.getElementById('result-panel');
+  if (!rp) return;
+  rp.innerHTML = `
+    <div class="result-card">
+      <div class="rc-title">Kompetitor (1 km)</div>
+      <div class="result-row">
+        <span class="rr-key">Total</span>
+        <span class="rr-val ${data.total > 5 ? 'bad' : data.total > 2 ? 'mid' : 'good'}">${data.total}</span>
+      </div>
+      ${data.items.slice(0,5).map(c => `
+        <div class="result-row">
+          <span class="rr-key" style="font-size:10px;max-width:140px;overflow:hidden;white-space:nowrap">${c.nama}</span>
+          <span class="rr-val" style="font-size:10px">${c.jarak_km} km</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function exportData(format) {
+  const kategori = document.getElementById('exp-kategori').value;
+  const url = `${API}/report/export?format=${format}${kategori?`&kategori=${kategori}`:''}`;
+  window.open(url, '_blank');
+}
+</script>
+</body>
+</html>
