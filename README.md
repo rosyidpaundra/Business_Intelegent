@@ -2,8 +2,6 @@
 Kami membantu bisnis mengambil keputusan lebih cepat dan lebih cerdas dengan dukungan Location Intelligence dan data geospasial.
 
 
-Tentu, ini adalah draf deskripsi `README.md` yang profesional dan informatif untuk repositori **Business_Intelegent** kamu. Deskripsi ini mencakup panduan instalasi lokal serta tautan ke versi demo yang sudah di-deploy.
-
 ---
 
 # Business Intelligence - Location Intelligence & Geospatial Data
