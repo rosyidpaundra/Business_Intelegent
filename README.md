@@ -104,6 +104,3 @@ Untuk melihat tampilan frontend, Anda dapat membuka file `index.html` langsung d
 
 Kontribusi selalu terbuka! Silakan lakukan *fork* pada repositori ini dan kirimkan *pull request* untuk fitur-fitur baru atau perbaikan bug.
 
----
-
-**Author:** [Rosyid Paundra](https://github.com/rosyidpaundra)
