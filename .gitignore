@@ -1,4 +1,5 @@
+.env
+venv311/
 __pycache__/
 *.pyc
-.env
 backend/test_db.py
