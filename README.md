@@ -252,8 +252,4 @@ git push
 | ORS API | Gratis dengan rate limit — daftar di openrouteservice.org |
 | `.env` | Jangan pernah commit file `.env` ke GitHub |
 
----
 
-## Lisensi
-
-MIT License — bebas digunakan dan dimodifikasi.
