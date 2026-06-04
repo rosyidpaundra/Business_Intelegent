@@ -1,0 +1,2626 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Panel — WebGIS BI Jogja</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<style>
+/* ── Reset & Tokens ───────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #080C12;
+  --bg1:      #0D1220;
+  --bg2:      #121929;
+  --bg3:      #1A2236;
+  --bg4:      #212C40;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --accent:   #00FFB2;
+  --accent2:  #0EA5E9;
+  --accent3:  #F59E0B;
+  --danger:   #F43F5E;
+  --purple:   #A78BFA;
+  --text:     #E2E8F0;
+  --text2:    #94A3B8;
+  --text3:    #475569;
+  --mono:     'Space Mono', monospace;
+  --sans:     'DM Sans', sans-serif;
+  --sidebar:  240px;
+  --topbar:   56px;
+  --radius:   6px;
+  --radius2:  12px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+
+/* ── Scrollbar ────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+/* ── Layout ───────────────────────────────── */
+#shell { display: grid; grid-template-columns: var(--sidebar) 1fr; grid-template-rows: var(--topbar) 1fr; height: 100vh; }
+
+/* ── Topbar ───────────────────────────────── */
+#topbar {
+  grid-column: 1 / -1;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  position: relative;
+  z-index: 100;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: var(--sidebar);
+  padding-right: 16px;
+  border-right: 1px solid var(--border);
+}
+
+.logo-mark {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bg);
+  letter-spacing: -0.5px;
+}
+
+.logo-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.logo-text span { color: var(--text3); font-weight: 400; }
+
+.topbar-mid { flex: 1; display: flex; align-items: center; gap: 12px; padding: 0 20px; }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.breadcrumb .active { color: var(--text2); }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pulse-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: relative;
+}
+
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
+.sys-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+}
+
+.admin-avatar {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent2), var(--purple));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+}
+
+/* ── Sidebar ──────────────────────────────── */
+#sidebar {
+  background: var(--bg1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  overflow-y: auto;
+}
+
+.nav-section {
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+
+.nav-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0 8px;
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+  user-select: none;
+}
+
+.nav-item:hover { background: var(--bg3); }
+
+.nav-item.active {
+  background: rgba(0,255,178,0.08);
+  border: 1px solid rgba(0,255,178,0.15);
+}
+
+.nav-item.active .nav-icon { color: var(--accent); }
+.nav-item.active .nav-name { color: var(--accent); }
+
+.nav-icon {
+  font-size: 14px;
+  color: var(--text3);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.nav-name {
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 500;
+  flex: 1;
+}
+
+.nav-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.nav-badge.warn { background: var(--accent3); }
+.nav-badge.danger { background: var(--danger); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg3);
+  cursor: pointer;
+}
+
+.api-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.api-status-dot.error { background: var(--danger); }
+
+.api-status-text {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  flex: 1;
+}
+
+.api-status-url {
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* ── Main Content ─────────────────────────── */
+#main {
+  overflow-y: auto;
+  background: var(--bg);
+  position: relative;
+}
+
+.page { display: none; padding: 24px; min-height: calc(100vh - var(--topbar)); }
+.page.active { display: block; }
+
+/* ── Cards & Grid ─────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.page-sub {
+  font-size: 13px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+/* ── KPI Cards ────────────────────────────── */
+.kpi {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+
+.kpi:hover { border-color: var(--border2); }
+
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.kpi.green::before { background: var(--accent); }
+.kpi.blue::before { background: var(--accent2); }
+.kpi.amber::before { background: var(--accent3); }
+.kpi.red::before { background: var(--danger); }
+.kpi.purple::before { background: var(--purple); }
+
+.kpi-icon {
+  font-size: 20px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.kpi-val {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.kpi-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.kpi-delta.up { background: rgba(0,255,178,0.1); color: var(--accent); }
+.kpi-delta.down { background: rgba(244,63,94,0.1); color: var(--danger); }
+
+/* ── Buttons ──────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+}
+
+.btn-primary { background: var(--accent); color: var(--bg); }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--border2); }
+.btn-danger { background: rgba(244,63,94,0.1); color: var(--danger); border: 1px solid rgba(244,63,94,0.2); }
+.btn-danger:hover { background: rgba(244,63,94,0.2); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-icon { padding: 7px; }
+.btn-group { display: flex; gap: 8px; }
+
+/* ── Table ────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius2);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  padding: 11px 16px;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--bg3); }
+
+tbody td {
+  padding: 12px 16px;
+  color: var(--text2);
+  vertical-align: middle;
+}
+
+.cell-main { color: var(--text); font-weight: 500; }
+.cell-mono { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-green { background: rgba(0,255,178,0.1); color: var(--accent); }
+.badge-blue { background: rgba(14,165,233,0.1); color: var(--accent2); }
+.badge-amber { background: rgba(245,158,11,0.1); color: var(--accent3); }
+.badge-red { background: rgba(244,63,94,0.1); color: var(--danger); }
+.badge-purple { background: rgba(167,139,250,0.1); color: var(--purple); }
+.badge-gray { background: var(--bg3); color: var(--text3); }
+
+/* ── Forms ────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-group.full { grid-column: 1 / -1; }
+
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+input[type=text], input[type=number], input[type=email],
+input[type=password], select, textarea {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color .15s;
+}
+
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 80px; }
+select option { background: var(--bg2); }
+
+.input-with-icon { position: relative; }
+.input-with-icon input { padding-left: 36px; }
+.input-icon {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  font-size: 13px;
+}
+
+/* ── Modal ────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius2);
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(16px);
+  transition: transform .2s;
+}
+
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.modal-close:hover { color: var(--text); border-color: var(--border2); }
+.modal-body { padding: 20px 24px; }
+.modal-foot { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── Search & Filter ──────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.search-box { position: relative; flex: 1; max-width: 320px; }
+.search-box input { padding-left: 36px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px; }
+
+/* ── Toast ────────────────────────────────── */
+#toast-area {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 280px;
+  animation: toast-in .2s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+@keyframes toast-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+.toast.success { border-left: 3px solid var(--accent); }
+.toast.error   { border-left: 3px solid var(--danger); }
+.toast.info    { border-left: 3px solid var(--accent2); }
+.toast.warn    { border-left: 3px solid var(--accent3); }
+
+/* ── Map ──────────────────────────────────── */
+#admin-map {
+  height: 320px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.leaflet-container { background: #0a0d14; }
+.leaflet-popup-content-wrapper {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.leaflet-popup-tip { background: var(--bg2); }
+.leaflet-bar { border: 1px solid var(--border) !important; }
+.leaflet-bar a { background: var(--bg2) !important; color: var(--text2) !important; border-bottom: 1px solid var(--border) !important; }
+.leaflet-bar a:hover { background: var(--bg3) !important; color: var(--accent) !important; }
+
+/* ── Log ──────────────────────────────────── */
+.log-list {
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  animation: fadeIn .2s ease;
+}
+
+.log-item:last-child { border-bottom: none; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+
+.log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); white-space: nowrap; margin-top: 1px; }
+.log-msg { color: var(--text2); flex: 1; line-height: 1.4; }
+.log-type { font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
+.log-type.info { background: rgba(14,165,233,0.1); color: var(--accent2); }
+.log-type.success { background: rgba(0,255,178,0.1); color: var(--accent); }
+.log-type.warn { background: rgba(245,158,11,0.1); color: var(--accent3); }
+.log-type.error { background: rgba(244,63,94,0.1); color: var(--danger); }
+
+/* ── Progress ─────────────────────────────── */
+.progress { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
+/* ── Toggle ───────────────────────────────── */
+.toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  flex-shrink: 0;
+}
+
+.toggle input { display: none; }
+
+.toggle-track {
+  width: 36px; height: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  display: block;
+}
+
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--text3);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: all .2s;
+}
+
+.toggle input:checked + .toggle-track::after {
+  transform: translateX(16px);
+  background: var(--bg);
+}
+
+/* ── Tabs ─────────────────────────────────── */
+.tabs { display: flex; gap: 2px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 3px; margin-bottom: 20px; width: fit-content; }
+
+.tab-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tab-btn.active { background: var(--accent); color: var(--bg); font-weight: 700; }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── Settings ─────────────────────────────── */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child { border-bottom: none; }
+.setting-info {}
+.setting-label { font-size: 14px; font-weight: 500; color: var(--text); }
+.setting-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* ── Coord display ────────────────────────── */
+#coord-display {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+/* ── Chip ─────────────────────────────────── */
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text3);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.chip:hover, .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,178,0.06); }
+
+/* ── Empty state ──────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text3);
+}
+
+.empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+.empty-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 4px; }
+.empty-desc { font-size: 13px; }
+
+/* ── Misc ─────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mb-16 { margin-bottom: 16px; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.flex-1 { flex: 1; }
+.text-right { text-align: right; }
+
+.loading-bar {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 200% 100%;
+  animation: loading-sweep 1.2s linear infinite;
+  border-radius: 2px;
+}
+
+@keyframes loading-sweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── Coordinate Picker ────────────────────── */
+#coord-picker-wrap { margin-top: 12px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+#coord-map { height: 220px; }
+
+.confirm-dialog {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius2);
+  padding: 24px;
+  text-align: center;
+  max-width: 360px;
+}
+
+.confirm-icon { font-size: 32px; margin-bottom: 12px; }
+.confirm-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.confirm-desc { font-size: 13px; color: var(--text3); margin-bottom: 20px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div id="shell">
+
+<!-- ── TOP BAR ─────────────────────────────── -->
+<div id="topbar">
+  <div class="logo-area">
+    <div class="logo-mark">GIS</div>
+    <div class="logo-text">WebGIS BI<br><span>Admin Panel</span></div>
+  </div>
+  <div class="topbar-mid">
+    <div class="breadcrumb">
+      <span>Admin</span>
+      <span>›</span>
+      <span class="active" id="breadcrumb-current">Dashboard</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="pulse-dot" title="System Online"></div>
+    <div class="sys-badge" id="sys-time">--:--:--</div>
+    <div class="admin-avatar" title="Admin">AD</div>
+  </div>
+</div>
+
+<!-- ── SIDEBAR ────────────────────────────── -->
+<div id="sidebar">
+  <div class="nav-section">
+    <div class="nav-label">Utama</div>
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <span class="nav-icon">⬡</span>
+      <span class="nav-name">Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="navigate('poi')">
+      <span class="nav-icon">◉</span>
+      <span class="nav-name">Kelola POI</span>
+      <span class="nav-badge" id="badge-poi">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('map')">
+      <span class="nav-icon">⊞</span>
+      <span class="nav-name">Peta Admin</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Analitik</div>
+    <div class="nav-item" onclick="navigate('analytics')">
+      <span class="nav-icon">◈</span>
+      <span class="nav-name">Analitik</span>
+    </div>
+    <div class="nav-item" onclick="navigate('isochrone')">
+      <span class="nav-icon">⊙</span>
+      <span class="nav-name">Isochrone</span>
+    </div>
+    <div class="nav-item" onclick="navigate('gap')">
+      <span class="nav-icon">◌</span>
+      <span class="nav-name">Gap Analysis</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Data</div>
+    <div class="nav-item" onclick="navigate('import')">
+      <span class="nav-icon">↑</span>
+      <span class="nav-name">Import Data</span>
+    </div>
+    <div class="nav-item" onclick="navigate('export')">
+      <span class="nav-icon">↓</span>
+      <span class="nav-name">Export Data</span>
+    </div>
+    <div class="nav-item" onclick="navigate('logs')">
+      <span class="nav-icon">≡</span>
+      <span class="nav-name">Activity Log</span>
+      <span class="nav-badge warn" id="badge-log">0</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Sistem</div>
+    <div class="nav-item" onclick="navigate('users')">
+      <span class="nav-icon">○</span>
+      <span class="nav-name">Pengguna</span>
+    </div>
+    <div class="nav-item" onclick="navigate('settings')">
+      <span class="nav-icon">◎</span>
+      <span class="nav-name">Pengaturan</span>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="api-status" onclick="checkAPI()">
+      <div class="api-status-dot" id="api-dot"></div>
+      <div style="flex:1;overflow:hidden">
+        <div class="api-status-text" id="api-status-text">Memeriksa API...</div>
+        <div class="api-status-url" id="api-url-display">localhost:8001</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN CONTENT ───────────────────────── -->
+<div id="main">
+
+  <!-- PAGE: DASHBOARD ──────────────────────── -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Ringkasan sistem WebGIS BI Kota Yogyakarta</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-sm" onclick="refreshDashboard()">↻ Refresh</button>
+        <button class="btn btn-primary btn-sm" onclick="navigate('poi'); openModal('modal-add-poi')">+ Tambah POI</button>
+      </div>
+    </div>
+
+    <div class="grid-4 mb-16" id="kpi-area">
+      <div class="kpi green">
+        <div class="kpi-icon">◉</div>
+        <div class="kpi-val" id="kpi-total-poi">—</div>
+        <div class="kpi-label">Total POI</div>
+        <div class="kpi-delta up" id="kpi-poi-delta">↑ memuat...</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-icon">≋</div>
+        <div class="kpi-val" id="kpi-total-roads">—</div>
+        <div class="kpi-label">Segmen Jalan</div>
+        <div class="kpi-delta up">↑ DB aktif</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-icon">⊙</div>
+        <div class="kpi-val" id="kpi-km">—</div>
+        <div class="kpi-label">km Jalan</div>
+        <div class="kpi-delta up">↑ terindeks</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-icon">◈</div>
+        <div class="kpi-val" id="kpi-kategori">—</div>
+        <div class="kpi-label">Kategori POI</div>
+        <div class="kpi-delta up">↑ aktif</div>
+      </div>
+    </div>
+
+    <div class="grid-2 mt-16">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Distribusi Kategori</div>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('analytics')">Detail →</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-kategori"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">POI Terbaru</div>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('poi')">Semua →</button>
+        </div>
+        <div id="recent-poi-list">
+          <div class="empty"><div class="empty-icon">◉</div><div class="empty-desc">Memuat data...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-20">
+      <div class="card-header">
+        <div class="card-title">Status Sistem</div>
+        <div class="badge badge-green" id="sys-status-badge">● Online</div>
+      </div>
+      <div class="grid-3" style="gap:12px">
+        <div style="background:var(--bg3);border-radius:var(--radius);padding:14px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px">FASTAPI BACKEND</div>
+          <div style="font-size:13px;color:var(--text);font-weight:500" id="api-backend-status">Memeriksa...</div>
+          <div class="progress mt-16"><div class="progress-fill" id="prog-api" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:var(--radius);padding:14px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px">DATABASE</div>
+          <div style="font-size:13px;color:var(--text);font-weight:500" id="db-status">Memeriksa...</div>
+          <div class="progress mt-16"><div class="progress-fill" id="prog-db" style="width:0%;background:var(--accent2)"></div></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:var(--radius);padding:14px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px">ORS API</div>
+          <div style="font-size:13px;color:var(--text);font-weight:500" id="ors-status">Memeriksa...</div>
+          <div class="progress mt-16"><div class="progress-fill" id="prog-ors" style="width:0%;background:var(--accent3)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: POI ────────────────────────────── -->
+  <div id="page-poi" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Kelola POI</div>
+        <div class="page-sub">Tambah, edit, hapus titik usaha</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modal-add-poi')">+ Tambah POI</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="poi-search" placeholder="Cari nama, alamat..." oninput="filterPOI()"/>
+      </div>
+      <select id="poi-filter-kategori" onchange="filterPOI()" style="width:160px">
+        <option value="">Semua Kategori</option>
+        <option value="kuliner">Kuliner</option>
+        <option value="retail">Retail</option>
+        <option value="jasa">Jasa</option>
+        <option value="kesehatan">Kesehatan</option>
+        <option value="pendidikan">Pendidikan</option>
+        <option value="pariwisata">Pariwisata</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadPOI()">↻ Refresh</button>
+      <div style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3)">
+        <span id="poi-count">0</span> data
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Kategori</th>
+            <th>Kecamatan</th>
+            <th>Koordinat</th>
+            <th>Dibuat</th>
+            <th style="text-align:center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="poi-tbody">
+          <tr><td colspan="7"><div class="empty"><div class="empty-desc">Memuat data POI...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: PETA ADMIN ────────────────────── -->
+  <div id="page-map" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Peta Admin</div>
+        <div class="page-sub">Tampilan peta dengan semua layer data</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-sm" id="map-mode-btn" onclick="toggleMapMode()">Mode: View</button>
+        <button class="btn btn-primary btn-sm" onclick="loadMapPOI()">↻ Muat Data</button>
+      </div>
+    </div>
+
+    <div class="grid-2" style="gap:16px;height:calc(100vh - 180px)">
+      <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+        <div class="card" style="flex-shrink:0">
+          <div class="card-title mb-16" style="margin-bottom:12px">Layer Kontrol</div>
+          <div class="setting-row" style="padding:8px 0">
+            <div class="setting-label" style="font-size:13px">● POI Markers</div>
+            <label class="toggle"><input type="checkbox" id="layer-poi" checked onchange="toggleMapLayer('poi')"><span class="toggle-track"></span></label>
+          </div>
+          <div class="setting-row" style="padding:8px 0">
+            <div class="setting-label" style="font-size:13px">◉ Heatmap</div>
+            <label class="toggle"><input type="checkbox" id="layer-heat" onchange="toggleMapLayer('heat')"><span class="toggle-track"></span></label>
+          </div>
+          <div class="setting-row" style="padding:8px 0;border-bottom:none">
+            <div class="setting-label" style="font-size:13px">⊙ Isochrone</div>
+            <label class="toggle"><input type="checkbox" id="layer-iso" onchange="toggleMapLayer('iso')"><span class="toggle-track"></span></label>
+          </div>
+        </div>
+
+        <div class="card" style="flex-shrink:0">
+          <div class="card-title" style="margin-bottom:12px">Filter Peta</div>
+          <div class="form-group">
+            <label>Kategori</label>
+            <select id="map-filter-cat" onchange="loadMapPOI()">
+              <option value="">Semua</option>
+              <option value="kuliner">Kuliner</option>
+              <option value="retail">Retail</option>
+              <option value="jasa">Jasa</option>
+              <option value="kesehatan">Kesehatan</option>
+              <option value="pendidikan">Pendidikan</option>
+              <option value="pariwisata">Pariwisata</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="flex-shrink:0">
+          <div class="card-title" style="margin-bottom:8px">Info Klik</div>
+          <div id="map-click-info" style="font-size:12px;color:var(--text3)">Klik peta untuk lihat koordinat atau tambah POI baru</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden">
+        <div id="admin-map-full" style="height:100%;min-height:400px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: ANALITIK ──────────────────────── -->
+  <div id="page-analytics" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Analitik</div>
+        <div class="page-sub">Statistik dan distribusi data POI</div>
+      </div>
+    </div>
+
+    <div class="grid-3 mb-16">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Per Kategori</div></div>
+        <div class="chart-wrap"><canvas id="chart-analytics-kategori"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Per Kecamatan</div></div>
+        <div class="chart-wrap"><canvas id="chart-analytics-kecamatan"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Tren Penambahan</div></div>
+        <div class="chart-wrap"><canvas id="chart-analytics-trend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Analisis Lokasi — Site Analysis</div>
+        <button class="btn btn-primary btn-sm" onclick="runSiteAnalysis()">▶ Analisis</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="number" id="site-lat" value="-7.7956" step="0.0001"/>
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="number" id="site-lng" value="110.3653" step="0.0001"/>
+        </div>
+        <div class="form-group">
+          <label>Kategori Usaha</label>
+          <select id="site-kategori">
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Radius Analisis (menit)</label>
+          <input type="number" id="site-radius" value="10" min="5" max="30"/>
+        </div>
+      </div>
+      <div id="site-result" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- PAGE: ISOCHRONE ─────────────────────── -->
+  <div id="page-isochrone" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Isochrone</div>
+        <div class="page-sub">Analisis area jangkauan berdasarkan waktu tempuh</div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:16px">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Parameter</div>
+          <div class="form-group">
+            <label>Koordinat (klik peta atau isi manual)</label>
+            <div class="flex gap-8">
+              <input type="number" id="iso-lat" placeholder="Latitude" value="-7.7956" step="0.0001"/>
+              <input type="number" id="iso-lng" placeholder="Longitude" value="110.3653" step="0.0001"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Mode Transport</label>
+            <select id="iso-profile">
+              <option value="driving-car">🚗 Kendaraan</option>
+              <option value="cycling-regular">🚲 Sepeda</option>
+              <option value="foot-walking">🚶 Jalan Kaki</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Jangkauan (menit): <span id="iso-range-val">10</span></label>
+            <input type="range" id="iso-range" min="2" max="60" value="10" style="width:100%;accent-color:var(--accent)" oninput="document.getElementById('iso-range-val').textContent=this.value"/>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="runAdminIsochrone()">▶ Hitung Isochrone</button>
+        </div>
+        <div class="card" id="iso-result-card" style="display:none">
+          <div class="card-title" style="margin-bottom:12px">Hasil</div>
+          <div id="iso-result"></div>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden;min-height:480px">
+        <div id="iso-map" style="height:100%;min-height:480px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: GAP ANALYSIS ──────────────────── -->
+  <div id="page-gap" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Gap Analysis</div>
+        <div class="page-sub">Temukan area yang kekurangan kategori bisnis tertentu</div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:16px">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Parameter Gap Analysis</div>
+          <div class="form-group">
+            <label>Kategori yang dicari gapnya</label>
+            <select id="gap-kategori">
+              <option value="kuliner">Kuliner</option>
+              <option value="retail">Retail</option>
+              <option value="jasa">Jasa</option>
+              <option value="kesehatan">Kesehatan</option>
+              <option value="pendidikan">Pendidikan</option>
+              <option value="pariwisata">Pariwisata</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ukuran Grid (derajat)</label>
+            <select id="gap-grid">
+              <option value="0.005">Sangat Detail (~500m)</option>
+              <option value="0.01" selected>Detail (~1km)</option>
+              <option value="0.02">Kasar (~2km)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="runGapAnalysis()">▶ Jalankan Gap Analysis</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">Hasil</div>
+          <div id="gap-result" style="font-size:13px;color:var(--text3)">Pilih kategori dan jalankan analisis.</div>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden;min-height:480px">
+        <div id="gap-map" style="height:100%;min-height:480px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: IMPORT ─────────────────────────── -->
+  <div id="page-import" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Import Data</div>
+        <div class="page-sub">Upload data POI dari file CSV atau JSON</div>
+      </div>
+    </div>
+    <div class="grid-2" style="gap:16px">
+      <div>
+        <div class="card mb-16">
+          <div class="card-title" style="margin-bottom:14px">Upload File CSV</div>
+          <div style="border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:border-color .15s" id="drop-zone" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+            <div style="font-size:28px;margin-bottom:8px;opacity:0.4">↑</div>
+            <div style="font-size:14px;color:var(--text2);margin-bottom:4px">Drop file CSV di sini</div>
+            <div style="font-size:12px;color:var(--text3)">atau</div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="document.getElementById('file-input').click()">Pilih File</button>
+            <input type="file" id="file-input" accept=".csv,.json" style="display:none" onchange="handleFileSelect(event)"/>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Format CSV yang Benar</div>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;color:var(--text3);line-height:1.8">
+            nama,kategori,alamat,kecamatan,lat,lng<br>
+            Warung Bu Tini,kuliner,Jl. Malioboro 12,Gedongtengen,-7.7925,110.3644<br>
+            Toko Batik Sari,retail,Jl. Prawirotaman 8,Mergangsan,-7.8054,110.3701
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text3)">
+            Kolom wajib: nama, kategori, lat, lng<br>
+            Kolom opsional: alamat, kecamatan
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Preview & Konfirmasi</div>
+          <div id="import-preview">
+            <div class="empty">
+              <div class="empty-icon">↑</div>
+              <div class="empty-title">Belum ada file</div>
+              <div class="empty-desc">Upload file CSV untuk preview data</div>
+            </div>
+          </div>
+          <div id="import-actions" style="display:none;margin-top:14px">
+            <button class="btn btn-primary" style="width:100%" onclick="confirmImport()">✓ Import <span id="import-count">0</span> Data</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: EXPORT ─────────────────────────── -->
+  <div id="page-export" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Export Data</div>
+        <div class="page-sub">Download data POI dalam berbagai format</div>
+      </div>
+    </div>
+    <div class="grid-3" style="gap:16px">
+
+      <div class="card">
+        <div style="font-size:28px;margin-bottom:12px">{ }</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:6px">GeoJSON</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.5">Format standar data geospasial. Bisa langsung dipakai di QGIS, Mapbox, atau Leaflet.</div>
+        <div class="form-group">
+          <label>Filter Kategori</label>
+          <select id="export-geojson-kat">
+            <option value="">Semua Kategori</option>
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="pendidikan">Pendidikan</option>
+            <option value="pariwisata">Pariwisata</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="exportData('geojson')">↓ Download GeoJSON</button>
+      </div>
+
+      <div class="card">
+        <div style="font-size:28px;margin-bottom:12px">≡</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:6px">CSV</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.5">Format spreadsheet. Bisa dibuka di Excel, Google Sheets, atau diolah dengan Python/R.</div>
+        <div class="form-group">
+          <label>Filter Kategori</label>
+          <select id="export-csv-kat">
+            <option value="">Semua Kategori</option>
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="exportData('csv')">↓ Download CSV</button>
+      </div>
+
+      <div class="card">
+        <div style="font-size:28px;margin-bottom:12px">⊞</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:6px">Laporan Ringkasan</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:16px;line-height:1.5">Statistik dan distribusi POI dalam format JSON. Berguna untuk dashboard eksternal.</div>
+        <div class="form-group">
+          <label>Kelompokkan</label>
+          <select id="export-group">
+            <option value="kategori">Per Kategori</option>
+            <option value="kecamatan">Per Kecamatan</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="exportSummary()">↓ Download Laporan</button>
+      </div>
+    </div>
+
+    <div class="card mt-20">
+      <div class="card-header"><div class="card-title">Riwayat Export</div></div>
+      <div id="export-history">
+        <div class="empty"><div class="empty-desc">Belum ada riwayat export</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: LOGS ──────────────────────────── -->
+  <div id="page-logs" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Activity Log</div>
+        <div class="page-sub">Riwayat aktivitas sistem dan API</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="clearLogs()">Hapus Log</button>
+    </div>
+    <div class="log-list" id="log-list">
+      <div class="log-item">
+        <span class="log-time">--:--:--</span>
+        <span class="log-type info">INFO</span>
+        <span class="log-msg">Sistem siap. Menunggu aktivitas...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: USERS ─────────────────────────── -->
+  <div id="page-users" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Pengguna</div>
+        <div class="page-sub">Kelola akses dan role pengguna</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modal-add-user')">+ Tambah Pengguna</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Nama</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Terakhir Aktif</th>
+            <th style="text-align:center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody">
+          <tr>
+            <td class="cell-mono">admin</td>
+            <td class="cell-main">Administrator</td>
+            <td><span class="badge badge-red">Admin</span></td>
+            <td><span class="badge badge-green">● Aktif</span></td>
+            <td class="cell-mono">Sekarang</td>
+            <td style="text-align:center">
+              <div class="btn-group" style="justify-content:center">
+                <button class="btn btn-secondary btn-sm btn-icon" title="Edit">✎</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-mono">operator1</td>
+            <td class="cell-main">Budi Santoso</td>
+            <td><span class="badge badge-blue">Operator</span></td>
+            <td><span class="badge badge-green">● Aktif</span></td>
+            <td class="cell-mono">2 jam lalu</td>
+            <td style="text-align:center">
+              <div class="btn-group" style="justify-content:center">
+                <button class="btn btn-secondary btn-sm btn-icon" title="Edit">✎</button>
+                <button class="btn btn-danger btn-sm btn-icon" title="Hapus">✕</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-mono">viewer1</td>
+            <td class="cell-main">Siti Rahayu</td>
+            <td><span class="badge badge-gray">Viewer</span></td>
+            <td><span class="badge badge-amber">○ Nonaktif</span></td>
+            <td class="cell-mono">3 hari lalu</td>
+            <td style="text-align:center">
+              <div class="btn-group" style="justify-content:center">
+                <button class="btn btn-secondary btn-sm btn-icon" title="Edit">✎</button>
+                <button class="btn btn-danger btn-sm btn-icon" title="Hapus">✕</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card mt-20">
+      <div class="card-header"><div class="card-title">Hak Akses Per Role</div></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Fitur</th><th>Admin</th><th>Operator</th><th>Viewer</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Lihat Peta & POI</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>Tambah POI</td><td>✓</td><td>✓</td><td>✗</td></tr>
+            <tr><td>Edit POI</td><td>✓</td><td>✓</td><td>✗</td></tr>
+            <tr><td>Hapus POI</td><td>✓</td><td>✗</td><td>✗</td></tr>
+            <tr><td>Import Data</td><td>✓</td><td>✓</td><td>✗</td></tr>
+            <tr><td>Export Data</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>Kelola Pengguna</td><td>✓</td><td>✗</td><td>✗</td></tr>
+            <tr><td>Pengaturan Sistem</td><td>✓</td><td>✗</td><td>✗</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: SETTINGS ──────────────────────── -->
+  <div id="page-settings" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Pengaturan</div>
+        <div class="page-sub">Konfigurasi sistem WebGIS BI</div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Simpan Pengaturan</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchSettingTab('api')">API</button>
+      <button class="tab-btn" onclick="switchSettingTab('map')">Peta</button>
+      <button class="tab-btn" onclick="switchSettingTab('notif')">Notifikasi</button>
+      <button class="tab-btn" onclick="switchSettingTab('system')">Sistem</button>
+    </div>
+
+    <div id="stab-api" class="tab-pane active">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Konfigurasi Backend API</div>
+        <div class="form-group">
+          <label>URL Backend (Railway/localhost)</label>
+          <input type="text" id="setting-api-url" value="http://localhost:8001"/>
+        </div>
+        <div class="form-group">
+          <label>API Prefix</label>
+          <input type="text" id="setting-api-prefix" value="/api/v1"/>
+        </div>
+        <div class="form-group">
+          <label>Request Timeout (detik)</label>
+          <input type="number" id="setting-timeout" value="30" min="5" max="120"/>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Auto Refresh</div>
+            <div class="setting-desc">Refresh data dashboard otomatis setiap 5 menit</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="setting-autorefresh" checked><span class="toggle-track"></span></label>
+        </div>
+        <div class="mt-16">
+          <button class="btn btn-secondary" onclick="checkAPI()">⌕ Test Koneksi API</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="stab-map" class="tab-pane">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Konfigurasi Peta</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Default Latitude</label>
+            <input type="number" id="setting-lat" value="-7.7956" step="0.0001"/>
+          </div>
+          <div class="form-group">
+            <label>Default Longitude</label>
+            <input type="number" id="setting-lng" value="110.3653" step="0.0001"/>
+          </div>
+          <div class="form-group">
+            <label>Default Zoom</label>
+            <input type="number" id="setting-zoom" value="13" min="8" max="18"/>
+          </div>
+          <div class="form-group">
+            <label>Basemap</label>
+            <select id="setting-basemap">
+              <option value="dark">CartoDB Dark</option>
+              <option value="osm">OpenStreetMap</option>
+              <option value="satellite">Satellite</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Tampilkan Koordinat</div>
+            <div class="setting-desc">Tampilkan koordinat cursor di pojok peta</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="setting-showcoords" checked><span class="toggle-track"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div id="stab-notif" class="tab-pane">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Pengaturan Notifikasi</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Notifikasi Tambah POI</div>
+            <div class="setting-desc">Tampilkan toast saat POI berhasil ditambahkan</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notif-add" checked><span class="toggle-track"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Notifikasi Error API</div>
+            <div class="setting-desc">Tampilkan peringatan saat API tidak bisa diakses</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notif-error" checked><span class="toggle-track"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Konfirmasi Hapus</div>
+            <div class="setting-desc">Tampilkan dialog konfirmasi sebelum hapus data</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="notif-confirm" checked><span class="toggle-track"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div id="stab-system" class="tab-pane">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Informasi Sistem</div>
+        <div class="setting-row">
+          <div class="setting-label">Versi Admin Panel</div>
+          <div class="cell-mono" style="font-size:12px">v1.0.0</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Leaflet.js</div>
+          <div class="cell-mono" style="font-size:12px">1.9.4</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Chart.js</div>
+          <div class="cell-mono" style="font-size:12px">4.4.2</div>
+        </div>
+        <div class="setting-row" style="border-bottom:none">
+          <div class="setting-label">Studi Kasus</div>
+          <div style="font-size:12px;color:var(--text3)">Kota Yogyakarta</div>
+        </div>
+        <div class="divider"></div>
+        <div class="btn-group">
+          <button class="btn btn-danger btn-sm" onclick="clearCache()">Hapus Cache</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetSettings()">Reset ke Default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ── MODAL: TAMBAH POI ─────────────────── -->
+<div class="modal-overlay" id="modal-add-poi">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Tambah POI Baru</div>
+      <button class="modal-close" onclick="closeModal('modal-add-poi')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Nama Usaha *</label>
+          <input type="text" id="add-nama" placeholder="Contoh: Warung Bu Tini"/>
+        </div>
+        <div class="form-group">
+          <label>Kategori *</label>
+          <select id="add-kategori">
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="pendidikan">Pendidikan</option>
+            <option value="pariwisata">Pariwisata</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kecamatan</label>
+          <select id="add-kecamatan">
+            <option value="">Pilih Kecamatan</option>
+            <option>Gedongtengen</option>
+            <option>Jetis</option>
+            <option>Gondokusuman</option>
+            <option>Danurejan</option>
+            <option>Pakualaman</option>
+            <option>Ngampilan</option>
+            <option>Wirobrajan</option>
+            <option>Mantrijeron</option>
+            <option>Kraton</option>
+            <option>Gondomanan</option>
+            <option>Mergangsan</option>
+            <option>Umbulharjo</option>
+            <option>Kotagede</option>
+            <option>Tegalrejo</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Alamat</label>
+          <input type="text" id="add-alamat" placeholder="Contoh: Jl. Malioboro 12"/>
+        </div>
+        <div class="form-group">
+          <label>Latitude *</label>
+          <input type="number" id="add-lat" placeholder="-7.7956" step="0.00001"/>
+        </div>
+        <div class="form-group">
+          <label>Longitude *</label>
+          <input type="number" id="add-lng" placeholder="110.3653" step="0.00001"/>
+        </div>
+      </div>
+      <div id="coord-picker-wrap">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:8px 0 6px;text-transform:uppercase;letter-spacing:0.08em">Klik peta untuk pilih koordinat</div>
+        <div id="coord-map"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-poi')">Batal</button>
+      <button class="btn btn-primary" onclick="submitAddPOI()">Simpan POI</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: EDIT POI ───────────────────── -->
+<div class="modal-overlay" id="modal-edit-poi">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Edit POI</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-poi')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id"/>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Nama Usaha *</label>
+          <input type="text" id="edit-nama"/>
+        </div>
+        <div class="form-group">
+          <label>Kategori *</label>
+          <select id="edit-kategori">
+            <option value="kuliner">Kuliner</option>
+            <option value="retail">Retail</option>
+            <option value="jasa">Jasa</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="pendidikan">Pendidikan</option>
+            <option value="pariwisata">Pariwisata</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kecamatan</label>
+          <select id="edit-kecamatan">
+            <option value="">Pilih Kecamatan</option>
+            <option>Gedongtengen</option><option>Jetis</option>
+            <option>Gondokusuman</option><option>Danurejan</option>
+            <option>Pakualaman</option><option>Ngampilan</option>
+            <option>Wirobrajan</option><option>Mantrijeron</option>
+            <option>Kraton</option><option>Gondomanan</option>
+            <option>Mergangsan</option><option>Umbulharjo</option>
+            <option>Kotagede</option><option>Tegalrejo</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Alamat</label>
+          <input type="text" id="edit-alamat"/>
+        </div>
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="number" id="edit-lat" step="0.00001"/>
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="number" id="edit-lng" step="0.00001"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-poi')">Batal</button>
+      <button class="btn btn-primary" onclick="submitEditPOI()">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: TAMBAH USER ────────────────── -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Tambah Pengguna</div>
+      <button class="modal-close" onclick="closeModal('modal-add-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" id="user-username" placeholder="username"/>
+        </div>
+        <div class="form-group">
+          <label>Nama Lengkap *</label>
+          <input type="text" id="user-nama" placeholder="Nama lengkap"/>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="user-email" placeholder="email@domain.com"/>
+        </div>
+        <div class="form-group">
+          <label>Role *</label>
+          <select id="user-role">
+            <option value="viewer">Viewer</option>
+            <option value="operator">Operator</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Password *</label>
+          <input type="password" id="user-pass" placeholder="Minimal 8 karakter"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-user')">Batal</button>
+      <button class="btn btn-primary" onclick="submitAddUser()">Tambah Pengguna</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: KONFIRMASI HAPUS ───────────── -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-body" style="padding:32px;text-align:center">
+      <div class="confirm-icon">⚠</div>
+      <div class="confirm-title" id="confirm-title">Konfirmasi Hapus</div>
+      <div class="confirm-desc" id="confirm-desc">Aksi ini tidak dapat dibatalkan.</div>
+      <div class="btn-group" style="justify-content:center">
+        <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Batal</button>
+        <button class="btn btn-danger" id="confirm-ok-btn">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────── -->
+<div id="toast-area"></div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+// ─── Config ────────────────────────────────
+let API = localStorage.getItem('admin_api_url') || 'http://localhost:8001/api/v1';
+let allPOI = [];
+let logCount = 0;
+let charts = {};
+let maps = {};
+let mapLayers = { poi: null, heat: null, iso: null };
+let exportHistory = [];
+let importData = [];
+let pendingDeleteId = null;
+
+// ─── Clock ─────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('sys-time').textContent =
+    now.toLocaleTimeString('id-ID', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── Navigation ────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+
+  const navMap = {
+    dashboard: 0, poi: 1, map: 2, analytics: 3,
+    isochrone: 4, gap: 5, import: 6, export: 7,
+    logs: 8, users: 9, settings: 10
+  };
+
+  const navItems = document.querySelectorAll('.nav-item');
+  if (navMap[page] !== undefined) navItems[navMap[page]]?.classList.add('active');
+
+  const names = {
+    dashboard: 'Dashboard', poi: 'Kelola POI', map: 'Peta Admin',
+    analytics: 'Analitik', isochrone: 'Isochrone', gap: 'Gap Analysis',
+    import: 'Import Data', export: 'Export Data', logs: 'Activity Log',
+    users: 'Pengguna', settings: 'Pengaturan'
+  };
+  document.getElementById('breadcrumb-current').textContent = names[page] || page;
+
+  // Lazy init
+  if (page === 'dashboard') refreshDashboard();
+  if (page === 'poi') loadPOI();
+  if (page === 'map') initAdminMap();
+  if (page === 'analytics') loadAnalytics();
+  if (page === 'isochrone') initIsoMap();
+  if (page === 'gap') initGapMap();
+}
+
+// ─── Toast ──────────────────────────────────
+function toast(msg, type = 'info') {
+  const icons = { success: '✓', error: '✕', info: 'i', warn: '⚠' };
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span style="font-size:15px">${icons[type]||'i'}</span><span>${msg}</span>`;
+  document.getElementById('toast-area').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+  addLog(msg, type === 'error' ? 'error' : type === 'warn' ? 'warn' : type === 'success' ? 'success' : 'info');
+}
+
+// ─── Logs ───────────────────────────────────
+function addLog(msg, type = 'info') {
+  logCount++;
+  document.getElementById('badge-log').textContent = logCount;
+  const list = document.getElementById('log-list');
+  const now = new Date().toLocaleTimeString('id-ID', { hour12: false });
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `
+    <span class="log-time">${now}</span>
+    <span class="log-type ${type}">${type.toUpperCase()}</span>
+    <span class="log-msg">${msg}</span>`;
+  list.insertBefore(item, list.firstChild);
+  if (list.children.length > 100) list.removeChild(list.lastChild);
+}
+
+function clearLogs() {
+  document.getElementById('log-list').innerHTML = '';
+  logCount = 0;
+  document.getElementById('badge-log').textContent = '0';
+}
+
+// ─── API Fetch ──────────────────────────────
+async function apiFetch(url, opts = {}) {
+  try {
+    const r = await fetch(API + url, opts);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    toast(`API Error: ${e.message}`, 'error');
+    return null;
+  }
+}
+
+// ─── Modal ──────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'modal-add-poi') setTimeout(initCoordPicker, 100);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ─── Check API ──────────────────────────────
+async function checkAPI() {
+  document.getElementById('api-dot').className = 'api-status-dot';
+  document.getElementById('api-status-text').textContent = 'Memeriksa...';
+  document.getElementById('api-url-display').textContent = API.replace('/api/v1','');
+  document.getElementById('prog-api').style.width = '0%';
+  document.getElementById('api-backend-status').textContent = 'Memeriksa...';
+
+  try {
+    const start = Date.now();
+    const data = await apiFetch('/report/dashboard');
+    const ms = Date.now() - start;
+    if (data) {
+      document.getElementById('api-dot').className = 'api-status-dot';
+      document.getElementById('api-status-text').textContent = `Online (${ms}ms)`;
+      document.getElementById('prog-api').style.width = '100%';
+      document.getElementById('api-backend-status').textContent = `Online — ${ms}ms`;
+      document.getElementById('db-status').textContent = 'Terhubung';
+      document.getElementById('prog-db').style.width = '100%';
+      document.getElementById('sys-status-badge').textContent = '● Online';
+      document.getElementById('sys-status-badge').className = 'badge badge-green';
+      toast('API berhasil terhubung', 'success');
+    }
+  } catch {
+    document.getElementById('api-dot').className = 'api-status-dot error';
+    document.getElementById('api-status-text').textContent = 'Offline';
+    document.getElementById('api-backend-status').textContent = 'Tidak terhubung';
+    document.getElementById('sys-status-badge').textContent = '○ Offline';
+    document.getElementById('sys-status-badge').className = 'badge badge-red';
+  }
+
+  // ORS check (simulated)
+  document.getElementById('ors-status').textContent = 'Configured';
+  document.getElementById('prog-ors').style.width = '75%';
+}
+
+// ─── Dashboard ──────────────────────────────
+async function refreshDashboard() {
+  const data = await apiFetch('/report/dashboard');
+  if (!data) return;
+
+  document.getElementById('kpi-total-poi').textContent = data.kpi?.total_poi ?? 0;
+  document.getElementById('kpi-total-roads').textContent = data.kpi?.total_segmen_jalan ?? 0;
+  document.getElementById('kpi-km').textContent = Math.round(data.kpi?.total_km_jalan ?? 0);
+  document.getElementById('badge-poi').textContent = data.kpi?.total_poi ?? 0;
+
+  const cats = data.distribusi_kategori || [];
+  document.getElementById('kpi-kategori').textContent = cats.length;
+  document.getElementById('kpi-poi-delta').textContent = `↑ ${cats.length} kategori`;
+
+  // Chart
+  if (charts['chart-kategori']) charts['chart-kategori'].destroy();
+  const ctx = document.getElementById('chart-kategori')?.getContext('2d');
+  if (ctx && cats.length) {
+    charts['chart-kategori'] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: cats.map(c => c.kategori),
+        datasets: [{
+          data: cats.map(c => c.n),
+          backgroundColor: ['#00FFB2','#0EA5E9','#F59E0B','#F43F5E','#A78BFA','#34d399'],
+          borderWidth: 0, hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: {
+          legend: { position: 'right', labels: { color: '#94A3B8', font: { family: "'Space Mono'", size: 10 }, padding: 12, boxWidth: 10 } }
+        }
+      }
+    });
+  }
+
+  // Recent POI
+  const poi = await apiFetch('/business/poi?limit=5');
+  if (poi) {
+    const el = document.getElementById('recent-poi-list');
+    if (poi.length === 0) {
+      el.innerHTML = '<div class="empty"><div class="empty-desc">Belum ada POI</div></div>';
+    } else {
+      el.innerHTML = poi.slice(0, 5).map(p => `
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span class="badge badge-${catColor(p.kategori)}">${p.kategori}</span>
+          <span style="flex:1;font-size:13px;font-weight:500">${p.nama}</span>
+          <span style="font-size:11px;color:var(--text3)">${p.kecamatan || '—'}</span>
+        </div>`).join('');
+    }
+  }
+
+  // API status
+  checkAPI();
+}
+
+function catColor(kat) {
+  const m = { kuliner:'green', retail:'blue', jasa:'amber', kesehatan:'red', pendidikan:'purple', pariwisata:'blue' };
+  return m[kat] || 'gray';
+}
+
+// ─── POI CRUD ───────────────────────────────
+async function loadPOI() {
+  const kat = document.getElementById('poi-filter-kategori')?.value || '';
+  const url = kat ? `/business/poi?kategori=${kat}` : '/business/poi';
+  const data = await apiFetch(url);
+  if (!data) return;
+  allPOI = data;
+  document.getElementById('badge-poi').textContent = data.length;
+  renderPOITable(data);
+}
+
+function filterPOI() {
+  const q = document.getElementById('poi-search').value.toLowerCase();
+  const kat = document.getElementById('poi-filter-kategori').value;
+  const filtered = allPOI.filter(p =>
+    (!kat || p.kategori === kat) &&
+    (!q || p.nama?.toLowerCase().includes(q) || p.alamat?.toLowerCase().includes(q))
+  );
+  renderPOITable(filtered);
+}
+
+function renderPOITable(data) {
+  document.getElementById('poi-count').textContent = data.length;
+  const tbody = document.getElementById('poi-tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">◉</div><div class="empty-desc">Tidak ada data POI</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td class="cell-mono">#${p.id}</td>
+      <td class="cell-main">${p.nama || '—'}</td>
+      <td><span class="badge badge-${catColor(p.kategori)}">${p.kategori || '—'}</span></td>
+      <td>${p.kecamatan || '—'}</td>
+      <td class="cell-mono" style="font-size:10px">${(p.lat||0).toFixed(4)}, ${(p.lng||0).toFixed(4)}</td>
+      <td class="cell-mono">${p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '—'}</td>
+      <td style="text-align:center">
+        <div class="btn-group" style="justify-content:center">
+          <button class="btn btn-secondary btn-sm btn-icon" title="Edit" onclick='openEditModal(${JSON.stringify(p)})'>✎</button>
+          <button class="btn btn-danger btn-sm btn-icon" title="Hapus" onclick="confirmDelete(${p.id}, '${p.nama}')">✕</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+async function submitAddPOI() {
+  const nama = document.getElementById('add-nama').value.trim();
+  const lat  = parseFloat(document.getElementById('add-lat').value);
+  const lng  = parseFloat(document.getElementById('add-lng').value);
+  if (!nama) { toast('Nama wajib diisi', 'warn'); return; }
+  if (isNaN(lat) || isNaN(lng)) { toast('Koordinat tidak valid', 'warn'); return; }
+
+  const body = {
+    nama,
+    kategori:  document.getElementById('add-kategori').value,
+    alamat:    document.getElementById('add-alamat').value,
+    lat, lng,
+    metadata: {}
+  };
+
+  const res = await apiFetch('/business/poi', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (res) {
+    toast(`POI "${nama}" berhasil ditambahkan (ID: ${res.id})`, 'success');
+    closeModal('modal-add-poi');
+    loadPOI();
+    refreshDashboard();
+    // Reset form
+    ['add-nama','add-alamat','add-lat','add-lng'].forEach(id => document.getElementById(id).value = '');
+  }
+}
+
+function openEditModal(poi) {
+  document.getElementById('edit-id').value = poi.id;
+  document.getElementById('edit-nama').value = poi.nama || '';
+  document.getElementById('edit-kategori').value = poi.kategori || 'kuliner';
+  document.getElementById('edit-kecamatan').value = poi.kecamatan || '';
+  document.getElementById('edit-alamat').value = poi.alamat || '';
+  document.getElementById('edit-lat').value = poi.lat || '';
+  document.getElementById('edit-lng').value = poi.lng || '';
+  openModal('modal-edit-poi');
+}
+
+async function submitEditPOI() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    nama:     document.getElementById('edit-nama').value,
+    kategori: document.getElementById('edit-kategori').value,
+    kecamatan:document.getElementById('edit-kecamatan').value,
+    alamat:   document.getElementById('edit-alamat').value,
+    lat:      parseFloat(document.getElementById('edit-lat').value),
+    lng:      parseFloat(document.getElementById('edit-lng').value),
+  };
+
+  // PUT endpoint — kalau belum ada di backend, pakai POST workaround
+  try {
+    const r = await fetch(`${API}/business/poi/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (r.ok) {
+      toast('POI berhasil diperbarui', 'success');
+      closeModal('modal-edit-poi');
+      loadPOI();
+    } else {
+      toast('Gagal update — cek endpoint PUT di backend', 'warn');
+      closeModal('modal-edit-poi');
+    }
+  } catch (e) {
+    toast('Gagal terhubung ke API', 'error');
+  }
+}
+
+function confirmDelete(id, nama) {
+  pendingDeleteId = id;
+  document.getElementById('confirm-title').textContent = 'Hapus POI';
+  document.getElementById('confirm-desc').textContent = `Yakin ingin menghapus "${nama}"? Data tidak bisa dikembalikan.`;
+  document.getElementById('confirm-ok-btn').onclick = () => deletePOI(id);
+  openModal('modal-confirm');
+}
+
+async function deletePOI(id) {
+  closeModal('modal-confirm');
+  try {
+    const r = await fetch(`${API}/business/poi/${id}`, { method: 'DELETE' });
+    if (r.ok || r.status === 204) {
+      toast('POI berhasil dihapus', 'success');
+      loadPOI();
+      refreshDashboard();
+    } else {
+      toast('Gagal hapus — cek endpoint DELETE di backend', 'warn');
+    }
+  } catch {
+    toast('Gagal terhubung ke API', 'error');
+  }
+}
+
+// ─── Coord Picker (dalam modal) ─────────────
+let coordMap = null;
+let coordMarker = null;
+
+function initCoordPicker() {
+  if (coordMap) { coordMap.invalidateSize(); return; }
+  coordMap = L.map('coord-map').setView([-7.7956, 110.3653], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(coordMap);
+  coordMap.on('click', function(e) {
+    const { lat, lng } = e.latlng;
+    document.getElementById('add-lat').value = lat.toFixed(6);
+    document.getElementById('add-lng').value = lng.toFixed(6);
+    if (coordMarker) coordMap.removeLayer(coordMarker);
+    coordMarker = L.circleMarker([lat, lng], {
+      radius: 7, color: '#00FFB2', fillColor: '#00FFB2', fillOpacity: 1, weight: 2
+    }).addTo(coordMap);
+  });
+}
+
+// ─── Admin Map ──────────────────────────────
+let adminMap = null;
+let adminMapMode = 'view';
+
+function initAdminMap() {
+  if (adminMap) { adminMap.invalidateSize(); return; }
+  adminMap = L.map('admin-map-full').setView([-7.7956, 110.3653], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(adminMap);
+  adminMap.on('click', function(e) {
+    if (adminMapMode === 'add') {
+      document.getElementById('map-click-info').innerHTML = `
+        <div style="color:var(--accent);font-family:var(--mono);font-size:11px;margin-bottom:6px">Koordinat dipilih:</div>
+        <div style="font-family:var(--mono);font-size:11px">${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}</div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%" onclick="openAddFromMap(${e.latlng.lat}, ${e.latlng.lng})">+ Tambah POI di sini</button>`;
+    }
+  });
+  loadMapPOI();
+}
+
+function openAddFromMap(lat, lng) {
+  document.getElementById('add-lat').value = lat.toFixed(6);
+  document.getElementById('add-lng').value = lng.toFixed(6);
+  openModal('modal-add-poi');
+}
+
+function toggleMapMode() {
+  adminMapMode = adminMapMode === 'view' ? 'add' : 'view';
+  const btn = document.getElementById('map-mode-btn');
+  btn.textContent = `Mode: ${adminMapMode === 'add' ? 'Tambah POI' : 'View'}`;
+  btn.className = adminMapMode === 'add' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+  adminMap.getContainer().style.cursor = adminMapMode === 'add' ? 'crosshair' : '';
+}
+
+async function loadMapPOI() {
+  if (!adminMap) return;
+  const kat = document.getElementById('map-filter-cat')?.value || '';
+  const url = kat ? `/business/poi?kategori=${kat}` : '/business/poi';
+  const data = await apiFetch(url);
+  if (!data) return;
+  if (mapLayers.poi) adminMap.removeLayer(mapLayers.poi);
+  const colors = { kuliner:'#00FFB2', retail:'#0EA5E9', jasa:'#F59E0B', kesehatan:'#F43F5E', pendidikan:'#A78BFA', pariwisata:'#34d399' };
+  const markers = data.map(p => {
+    const c = colors[p.kategori] || '#94A3B8';
+    const icon = L.divIcon({
+      html: `<div style="width:10px;height:10px;border-radius:50%;background:${c};border:2px solid ${c}44;box-shadow:0 0 6px ${c}88"></div>`,
+      className: '', iconSize: [10,10], iconAnchor: [5,5]
+    });
+    return L.marker([p.lat, p.lng], { icon }).bindPopup(`<b>${p.nama}</b><br>${p.kategori}<br>${p.alamat || ''}`);
+  });
+  mapLayers.poi = L.layerGroup(markers).addTo(adminMap);
+  toast(`${data.length} marker dimuat`, 'success');
+}
+
+function toggleMapLayer(layer) {
+  if (!adminMap) return;
+  const checked = document.getElementById(`layer-${layer}`).checked;
+  if (layer === 'poi') {
+    if (mapLayers.poi) {
+      checked ? adminMap.addLayer(mapLayers.poi) : adminMap.removeLayer(mapLayers.poi);
+    }
+  }
+}
+
+// ─── Analytics ──────────────────────────────
+async function loadAnalytics() {
+  const data = await apiFetch('/report/dashboard');
+  if (!data) return;
+
+  const cats = data.distribusi_kategori || [];
+
+  // Chart kategori
+  renderBarChart('chart-analytics-kategori', cats.map(c=>c.kategori), cats.map(c=>c.n), '#00FFB2');
+
+  // Dummy kecamatan chart
+  renderBarChart('chart-analytics-kecamatan',
+    ['Gedongtengen','Gondokusuman','Mergangsan','Umbulharjo','Jetis'],
+    [12, 9, 7, 5, 4], '#0EA5E9');
+
+  // Trend chart (dummy)
+  if (charts['chart-analytics-trend']) charts['chart-analytics-trend'].destroy();
+  const ctx = document.getElementById('chart-analytics-trend')?.getContext('2d');
+  if (ctx) {
+    charts['chart-analytics-trend'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','Mei','Jun'],
+        datasets: [{ data: [2,5,3,8,12,data.kpi?.total_poi||15], borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.4, fill: true, pointRadius: 4 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#1A2236' }, ticks: { color: '#475569', font: { family: "'Space Mono'", size: 10 } } },
+          y: { grid: { color: '#1A2236' }, ticks: { color: '#475569', font: { family: "'Space Mono'", size: 10 } } }
+        }
+      }
+    });
+  }
+}
+
+function renderBarChart(id, labels, values, color) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: color, borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#475569', font: { family: "'Space Mono'", size: 9 } } },
+        y: { grid: { color: '#1A2236' }, ticks: { color: '#475569', font: { family: "'Space Mono'", size: 9 } } }
+      }
+    }
+  });
+}
+
+async function runSiteAnalysis() {
+  const lat = parseFloat(document.getElementById('site-lat').value);
+  const lng = parseFloat(document.getElementById('site-lng').value);
+  const kategori = document.getElementById('site-kategori').value;
+  const radius = parseInt(document.getElementById('site-radius').value);
+
+  document.getElementById('site-result').innerHTML = '<div class="loading-bar" style="margin:12px 0"></div>';
+
+  const data = await apiFetch('/analytics/site-analysis', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng, kategori, radius_menit: radius, profile: 'driving-car' })
+  });
+
+  if (!data) return;
+
+  const skor = data.skor_total || 0;
+  const col = skor >= 70 ? 'var(--accent)' : skor >= 50 ? 'var(--accent3)' : 'var(--danger)';
+  document.getElementById('site-result').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:24px;color:${col};font-weight:700">${skor}</div>
+        <div style="font-size:11px;color:var(--text3)">Skor Total</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:24px;color:var(--accent2);font-weight:700">${data.aksesibilitas?.skor_aksesibilitas||0}</div>
+        <div style="font-size:11px;color:var(--text3)">Aksesibilitas</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:24px;color:var(--accent3);font-weight:700">${data.demand?.demand_score||0}</div>
+        <div style="font-size:11px;color:var(--text3)">Demand Score</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px;background:rgba(${skor>=70?'0,255,178':skor>=50?'245,158,11':'244,63,94'},0.1);border-radius:var(--radius);font-weight:500;color:${col}">
+      ${data.rekomendasi || '—'}
+    </div>`;
+}
+
+// ─── Isochrone ──────────────────────────────
+let isoMap = null;
+let isoLayer = null;
+
+function initIsoMap() {
+  if (isoMap) { isoMap.invalidateSize(); return; }
+  isoMap = L.map('iso-map').setView([-7.7956, 110.3653], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(isoMap);
+  isoMap.on('click', function(e) {
+    document.getElementById('iso-lat').value = e.latlng.lat.toFixed(5);
+    document.getElementById('iso-lng').value = e.latlng.lng.toFixed(5);
+  });
+}
+
+async function runAdminIsochrone() {
+  const lat = parseFloat(document.getElementById('iso-lat').value);
+  const lng = parseFloat(document.getElementById('iso-lng').value);
+  const range = parseInt(document.getElementById('iso-range').value);
+  const profile = document.getElementById('iso-profile').value;
+
+  if (!isoMap) initIsoMap();
+  if (isoLayer) isoMap.removeLayer(isoLayer);
+
+  const data = await apiFetch(`/geo/isochrone?lng=${lng}&lat=${lat}&range_menit=${range}&profile=${profile}`);
+  if (!data) return;
+
+  const geo = L.geoJSON(data, { style: { color: '#0EA5E9', fillColor: '#0EA5E9', fillOpacity: 0.15, weight: 2, dashArray: '4 4' } });
+  const center = L.circleMarker([lat, lng], { radius: 7, color: '#00FFB2', fillColor: '#00FFB2', fillOpacity: 1, weight: 2 });
+  isoLayer = L.layerGroup([geo, center]).addTo(isoMap);
+  isoMap.fitBounds(geo.getBounds());
+
+  const feat = data.features?.[0];
+  const area = feat?.properties?.area ? (feat.properties.area / 1e6).toFixed(3) : '—';
+
+  document.getElementById('iso-result-card').style.display = 'block';
+  document.getElementById('iso-result').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text3)">Jangkauan</span><span style="color:var(--accent);font-family:var(--mono)">${range} menit</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text3)">Luas Area</span><span style="font-family:var(--mono)">${area} km²</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0">
+        <span style="color:var(--text3)">Mode</span><span style="font-family:var(--mono)">${profile}</span>
+      </div>
+    </div>`;
+
+  toast(`Isochrone ${range} menit berhasil dihitung`, 'success');
+}
+
+// ─── Gap Analysis ───────────────────────────
+let gapMap = null;
+let gapLayer = null;
+
+function initGapMap() {
+  if (gapMap) { gapMap.invalidateSize(); return; }
+  gapMap = L.map('gap-map').setView([-7.7956, 110.3653], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(gapMap);
+}
+
+async function runGapAnalysis() {
+  const kat = document.getElementById('gap-kategori').value;
+  const grid = document.getElementById('gap-grid').value;
+  if (!gapMap) initGapMap();
+  if (gapLayer) gapMap.removeLayer(gapLayer);
+
+  document.getElementById('gap-result').innerHTML = '<div class="loading-bar" style="margin:8px 0"></div>';
+
+  const data = await apiFetch(`/analytics/gap-analysis?kategori=${kat}&grid_size=${grid}`);
+  if (!data) return;
+
+  const geo = L.geoJSON(data, {
+    pointToLayer: (f, ll) => L.circleMarker(ll, {
+      radius: 6, color: '#F43F5E', fillColor: 'rgba(244,63,94,0.3)', fillOpacity: 1, weight: 1.5
+    }),
+    onEachFeature: (f, layer) => layer.bindTooltip(`Gap: ${kat}`)
+  });
+
+  gapLayer = geo.addTo(gapMap);
+
+  const total = data.total_gap_points || 0;
+  document.getElementById('gap-result').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:28px;color:var(--danger);font-weight:700">${total}</div>
+      <div style="font-size:13px;color:var(--text3)">area gap ditemukan untuk kategori <b style="color:var(--text)">${kat}</b></div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.6">Titik merah menunjukkan lokasi yang potensial untuk membuka usaha baru kategori ini — tidak ada kompetitor dalam radius yang ditentukan.</div>`;
+
+  toast(`${total} gap area ditemukan`, total > 0 ? 'success' : 'info');
+}
+
+// ─── Import ─────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    importData = lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim());
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = vals[i] || '');
+      return obj;
+    }).filter(r => r.nama && r.lat && r.lng);
+
+    document.getElementById('import-count').textContent = importData.length;
+    document.getElementById('import-actions').style.display = 'block';
+
+    const preview = document.getElementById('import-preview');
+    preview.innerHTML = `
+      <div style="margin-bottom:10px;font-size:13px;color:var(--text3)">${importData.length} baris valid dari ${lines.length - 1} total</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nama</th><th>Kategori</th><th>Lat</th><th>Lng</th></tr></thead>
+          <tbody>
+            ${importData.slice(0, 5).map(r => `
+              <tr>
+                <td>${r.nama}</td>
+                <td><span class="badge badge-${catColor(r.kategori)}">${r.kategori||'—'}</span></td>
+                <td class="cell-mono">${r.lat}</td>
+                <td class="cell-mono">${r.lng}</td>
+              </tr>`).join('')}
+            ${importData.length > 5 ? `<tr><td colspan="4" style="text-align:center;color:var(--text3);font-size:12px">... dan ${importData.length - 5} baris lagi</td></tr>` : ''}
+          </tbody>
+        </table>
+      </div>`;
+  };
+  reader.readAsText(file);
+}
+
+async function confirmImport() {
+  if (!importData.length) { toast('Tidak ada data untuk diimport', 'warn'); return; }
+  let success = 0, fail = 0;
+  for (const row of importData) {
+    const res = await apiFetch('/business/poi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nama: row.nama, kategori: row.kategori || 'lainnya',
+        alamat: row.alamat || '', lat: parseFloat(row.lat), lng: parseFloat(row.lng), metadata: {}
+      })
+    });
+    res ? success++ : fail++;
+  }
+  toast(`Import selesai: ${success} berhasil, ${fail} gagal`, success > 0 ? 'success' : 'error');
+  importData = [];
+  loadPOI();
+  refreshDashboard();
+}
+
+// ─── Export ─────────────────────────────────
+function exportData(format) {
+  const kat = format === 'csv'
+    ? document.getElementById('export-csv-kat').value
+    : document.getElementById('export-geojson-kat').value;
+  const url = `${API}/report/export?format=${format}${kat?`&kategori=${kat}`:''}`;
+  window.open(url, '_blank');
+  addExportHistory(format.toUpperCase(), kat || 'Semua');
+  toast(`Export ${format.toUpperCase()} dimulai`, 'success');
+}
+
+async function exportSummary() {
+  const group = document.getElementById('export-group').value;
+  const data = await apiFetch(`/report/summary?group_by=${group}`);
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `laporan_${group}_${Date.now()}.json`;
+  a.click();
+  addExportHistory('JSON', group);
+  toast('Laporan berhasil didownload', 'success');
+}
+
+function addExportHistory(format, filter) {
+  const now = new Date().toLocaleString('id-ID');
+  exportHistory.unshift({ format, filter, time: now });
+  const el = document.getElementById('export-history');
+  el.innerHTML = exportHistory.map(h => `
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span class="badge badge-blue">${h.format}</span>
+      <span style="flex:1">Filter: ${h.filter}</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:11px">${h.time}</span>
+    </div>`).join('');
+}
+
+// ─── Users ──────────────────────────────────
+function submitAddUser() {
+  const username = document.getElementById('user-username').value.trim();
+  const nama = document.getElementById('user-nama').value.trim();
+  const role = document.getElementById('user-role').value;
+  if (!username || !nama) { toast('Username dan nama wajib diisi', 'warn'); return; }
+
+  const roleColors = { admin: 'badge-red', operator: 'badge-blue', viewer: 'badge-gray' };
+  const tbody = document.getElementById('users-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="cell-mono">${username}</td>
+    <td class="cell-main">${nama}</td>
+    <td><span class="badge ${roleColors[role]}">${role}</span></td>
+    <td><span class="badge badge-green">● Aktif</span></td>
+    <td class="cell-mono">Baru saja</td>
+    <td style="text-align:center">
+      <div class="btn-group" style="justify-content:center">
+        <button class="btn btn-secondary btn-sm btn-icon">✎</button>
+        <button class="btn btn-danger btn-sm btn-icon">✕</button>
+      </div>
+    </td>`;
+  tbody.appendChild(tr);
+  closeModal('modal-add-user');
+  toast(`Pengguna ${username} berhasil ditambahkan`, 'success');
+}
+
+// ─── Settings ───────────────────────────────
+function switchSettingTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`stab-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function saveSettings() {
+  const newUrl = document.getElementById('setting-api-url').value.trim();
+  const prefix = document.getElementById('setting-api-prefix').value.trim();
+  if (newUrl) {
+    API = newUrl + prefix;
+    localStorage.setItem('admin_api_url', API);
+    document.getElementById('api-url-display').textContent = newUrl;
+    toast('Pengaturan disimpan', 'success');
+    checkAPI();
+  }
+}
+
+function clearCache() {
+  localStorage.clear();
+  toast('Cache berhasil dihapus', 'success');
+}
+
+function resetSettings() {
+  API = 'http://localhost:8001/api/v1';
+  localStorage.removeItem('admin_api_url');
+  document.getElementById('setting-api-url').value = 'http://localhost:8001';
+  toast('Pengaturan direset ke default', 'info');
+}
+
+// ─── Init ───────────────────────────────────
+window.addEventListener('load', () => {
+  refreshDashboard();
+  addLog('Admin Panel dimuat', 'info');
+  addLog(`API target: ${API}`, 'info');
+});
+</script>
+</body>
+</html>
