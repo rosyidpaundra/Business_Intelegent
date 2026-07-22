@@ -40,16 +40,8 @@ A location-based WebGIS application for business analysis in Yogyakarta City. It
 
 ```
 
-Business_Intelegent/
-├── backend/
-│   ├── main.py              # FastAPI app — all API endpoints
-│   ├── requirements.txt     # Python dependencies
-│   ├── Procfile             # Railway start command configuration
-│   └── runtime.txt          # Python version (3.11.0)
-├── frontend/
-│   └── index.html           # Single-file WebGIS app
-├── .gitignore
-└── README.md
+<img width="439" height="237" alt="image" src="https://github.com/user-attachments/assets/a10b227b-a5ed-4c79-8682-5d75c3e8e0aa" />
+
 
 ```
 
