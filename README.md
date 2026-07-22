@@ -1,4 +1,4 @@
-Berikut adalah terjemahan lengkap seluruh isi file **README.md** dari awal hingga akhir dalam bahasa Inggris:
+
 
 ```markdown
 # WebGIS Business Intelligence — Yogyakarta City
