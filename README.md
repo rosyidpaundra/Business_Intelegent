@@ -15,19 +15,7 @@ A location-based WebGIS application for business analysis in Yogyakarta City. It
 
 ```
 
-Browser (Vercel)
-│
-├── Frontend: Static HTML/CSS/JS
-│   └── Vercel (Global CDN, free)
-│
-└── Backend: FastAPI Python
-└── Railway (Web Service, free $5/month)
-│
-├── Database: PostgreSQL + PostGIS
-│   └── Supabase (500MB free)
-│
-└── Routing & Isochrone
-└── OpenRouteService API (free)
+![Uploading image.png…]()
 
 ```
 
