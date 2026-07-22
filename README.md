@@ -14,8 +14,7 @@ A location-based WebGIS application for business analysis in Yogyakarta City. It
 
 
 ```
-
-![Uploading image.png…]()
+<img width="300" height="301" alt="image" src="https://github.com/user-attachments/assets/72f0e8e9-a16e-4ae4-a3d4-13c5af057390" />
 
 ```
 
